@@ -7,5 +7,7 @@ venv/
 .pytest_cache/
 .mypy_cache/
 data/chroma/
+evals/results/latest.json
+evals/results/latest.md
 *.log
 .DS_Store
