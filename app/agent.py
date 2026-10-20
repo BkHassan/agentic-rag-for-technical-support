@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 from google import genai
@@ -58,9 +59,14 @@ You may call search_technical_documentation to look up internal technical docs.
 Gemini does not run that function itself — you only request it; the host application
 executes the search and returns structured evidence.
 
-When documentation is useful, call search_technical_documentation with a focused query.
-Prefer results with lower cosine distance (closer matches).
+When to call search_technical_documentation:
+- Call it for concrete technical troubleshooting tickets (network, DNS, HTTP errors,
+  database connectivity, authentication failures, uploads, VPN/IP issues, etc.).
+- Do NOT call it for thanks/acknowledgements, staffing/access requests, pure
+  feature requests, or other non-troubleshooting messages where documentation
+  search would not help.
 
+Prefer results with lower cosine distance (closer matches).
 Do not invent troubleshooting procedures. Wait for tool results before asserting remedies.
 """.strip()
 
@@ -199,8 +205,11 @@ def run_tool_calling_turn(
     )
 
     user_prompt = (
-        "Investigate this support ticket. Call search_technical_documentation to "
-        "retrieve documented diagnostic steps before recommending actions.\n\n"
+        "Review this support ticket.\n"
+        "If it is a concrete technical troubleshooting issue, call "
+        "search_technical_documentation with a focused query before recommending "
+        "actions. If it is not a troubleshooting issue (thanks, staffing, access "
+        "requests, etc.), do not call the tool.\n\n"
         f"Ticket ID: {ticket_model.ticket_id}\n"
         f"Description:\n{ticket_model.description}"
     )
@@ -475,11 +484,11 @@ def collect_evidence_for_ticket(
     """
     Collect retrieval evidence and record whether retrieval actually ran.
 
-    If Gemini did not request the knowledge-base tool, the application may run a
-    deterministic guardrail search. Either way, missing retrieval is never treated
-    as sufficient evidence — validation still decides.
+    If Gemini did not request the knowledge-base tool, do not invent evidence and
+    do not treat the missing tool call as sufficient. The host may later return
+    the safe fallback after validation fails.
     """
-    cfg = cfg or settings
+    del cfg  # reserved for future host-side policy knobs
     gemini_requested = bool(tool_outcome.get("used_knowledge_base"))
     evidence = list(tool_outcome.get("evidence") or [])
 
@@ -488,17 +497,104 @@ def collect_evidence_for_ticket(
 
     logger.info(
         "Gemini did not request retrieval for ticket_id=%s; "
-        "running application guardrail search (still subject to validation)",
+        "skipping host-side search (absence of a tool call is not evidence)",
         ticket.ticket_id,
     )
-    host_search = execute_tool_call(
-        SEARCH_TECHNICAL_DOCUMENTATION_NAME,
-        {"query": ticket.description},
-        cfg=cfg,
-    )
-    evidence = list(host_search.get("results") or [])
-    # Retrieval was performed by the application, not implied by a missing tool call.
-    return evidence, True, "application_guardrail"
+    return [], False, "gemini_skipped"
+
+
+@dataclass
+class TicketAnalysisTrace:
+    """Full agent outcome plus instrumentation for evaluation."""
+
+    response: AgentResponse
+    classification_category: str
+    gemini_requested_retrieval: bool
+    retrieval_source: str
+    retrieval_performed: bool
+    evidence: list[dict[str, Any]]
+    validation_sufficient: bool
+    validation_reason: str
+    tool_calls: list[dict[str, Any]]
+    latency_ms: float
+    error: str | None = None
+
+
+def analyze_ticket_with_trace(
+    ticket: SupportTicket | dict[str, Any] | str,
+    *,
+    ticket_id: str = "adhoc",
+    client: genai.Client | None = None,
+    cfg: Settings | None = None,
+) -> TicketAnalysisTrace:
+    """Run the full agent path and return response + evaluation trace."""
+    import time
+
+    cfg = cfg or settings
+    started = time.perf_counter()
+    ticket_model = _as_ticket(ticket, ticket_id=ticket_id)
+
+    try:
+        client = client or get_genai_client(cfg.google_api_key)
+        classification = classify_ticket(ticket_model, client=client, cfg=cfg)
+        tool_outcome = run_tool_calling_turn(ticket_model, client=client, cfg=cfg)
+        evidence, retrieval_performed, retrieval_source = collect_evidence_for_ticket(
+            ticket_model,
+            tool_outcome,
+            cfg=cfg,
+        )
+        validation = validate_retrieval_evidence(
+            evidence,
+            retrieval_performed=retrieval_performed,
+            cfg=cfg,
+        )
+        response = generate_grounded_recommendations(
+            ticket_model,
+            category=classification.category,
+            evidence=evidence,
+            retrieval_performed=retrieval_performed,
+            client=client,
+            cfg=cfg,
+            validation=validation,
+        )
+        return TicketAnalysisTrace(
+            response=response,
+            classification_category=classification.category.value,
+            gemini_requested_retrieval=bool(tool_outcome.get("used_knowledge_base")),
+            retrieval_source=retrieval_source,
+            retrieval_performed=retrieval_performed,
+            evidence=evidence,
+            validation_sufficient=validation.sufficient_evidence,
+            validation_reason=validation.reason,
+            tool_calls=list(tool_outcome.get("tool_calls") or []),
+            latency_ms=(time.perf_counter() - started) * 1000.0,
+            error=None,
+        )
+    except Exception as exc:  # noqa: BLE001 - capture for eval reporting
+        logger.exception("analyze_ticket_with_trace failed for %s", ticket_model.ticket_id)
+        # Minimal failed response so callers can still score the row.
+        failed = AgentResponse(
+            ticket_id=ticket_model.ticket_id,
+            category=TicketCategory.OTHER,
+            recommendations=[FALLBACK_MESSAGE],
+            sources=[],
+            sufficient_evidence=False,
+            fallback_triggered=True,
+            summary=FALLBACK_MESSAGE,
+        )
+        return TicketAnalysisTrace(
+            response=failed,
+            classification_category=TicketCategory.OTHER.value,
+            gemini_requested_retrieval=False,
+            retrieval_source="error",
+            retrieval_performed=False,
+            evidence=[],
+            validation_sufficient=False,
+            validation_reason=str(exc),
+            tool_calls=[],
+            latency_ms=(time.perf_counter() - started) * 1000.0,
+            error=str(exc),
+        )
 
 
 def handle_support_ticket(
@@ -515,39 +611,15 @@ def handle_support_ticket(
     3) validate evidence deterministically (before final LLM recommendations)
     4) generate grounded recommendations or return the safe fallback
     """
-    cfg = cfg or settings
-    client = client or get_genai_client(cfg.google_api_key)
-    ticket_model = _as_ticket(ticket, ticket_id=ticket_id)
-
-    classification = classify_ticket(ticket_model, client=client, cfg=cfg)
-    tool_outcome = run_tool_calling_turn(ticket_model, client=client, cfg=cfg)
-    evidence, retrieval_performed, retrieval_source = collect_evidence_for_ticket(
-        ticket_model,
-        tool_outcome,
-        cfg=cfg,
-    )
-
-    validation = validate_retrieval_evidence(
-        evidence,
-        retrieval_performed=retrieval_performed,
-        cfg=cfg,
-    )
-    logger.info(
-        "ticket_id=%s retrieval_source=%s validation=%s",
-        ticket_model.ticket_id,
-        retrieval_source,
-        validation.reason,
-    )
-
-    return generate_grounded_recommendations(
-        ticket_model,
-        category=classification.category,
-        evidence=evidence,
-        retrieval_performed=retrieval_performed,
+    trace = analyze_ticket_with_trace(
+        ticket,
+        ticket_id=ticket_id,
         client=client,
         cfg=cfg,
-        validation=validation,
     )
+    if trace.error:
+        raise RuntimeError(trace.error)
+    return trace.response
 
 
 def main() -> None:
