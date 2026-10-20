@@ -30,12 +30,25 @@ python -m app.rag.ingestion
 Source docs: `data/technical_docs/`.  
 Persistent index: `data/chroma/`.
 
-## Run the agent
+## Run the API
 
 ```bash
-python -m app.agent
+uvicorn app.main:app --reload
 ```
 
+Open interactive docs at `http://127.0.0.1:8000/docs`.
+
+```http
+POST /tickets/analyze
+Content-Type: application/json
+
+{
+  "ticket_id": "T-DB-001",
+  "description": "Users cannot connect because the database connection keeps timing out."
+}
+```
+
+CLI entry point (no HTTP): `python -m app.agent`  
 Programmatic entry point: `handle_support_ticket()` in `app/agent.py`.
 
 ## Tests
