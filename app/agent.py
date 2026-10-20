@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -93,6 +94,60 @@ def _as_ticket(ticket: SupportTicket | dict[str, Any] | str, ticket_id: str = "a
     return SupportTicket.model_validate(ticket)
 
 
+def _is_transient_gemini_error(exc: Exception) -> bool:
+    message = (getattr(exc, "message", None) or str(exc)).lower()
+    code = getattr(exc, "code", None)
+    try:
+        code_int = int(code) if code is not None else None
+    except (TypeError, ValueError):
+        code_int = None
+    return code_int in {429, 503, 500} or any(
+        needle in message
+        for needle in (
+            "high demand",
+            "try again later",
+            "temporarily unavailable",
+            "resource exhausted",
+            "unavailable",
+        )
+    )
+
+
+def _generate_content_with_retry(
+    client: genai.Client,
+    *,
+    model: str,
+    contents: Any,
+    config: types.GenerateContentConfig,
+    max_attempts: int = 3,
+    base_delay_sec: float = 1.5,
+) -> Any:
+    """Call Gemini with short retries for transient overload / rate-limit errors."""
+    last_exc: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=config,
+            )
+        except (genai_errors.ServerError, genai_errors.ClientError) as exc:
+            last_exc = exc
+            if attempt >= max_attempts or not _is_transient_gemini_error(exc):
+                raise
+            delay = base_delay_sec * attempt
+            logger.warning(
+                "Transient Gemini error on attempt %s/%s (%s). Retrying in %.1fs",
+                attempt,
+                max_attempts,
+                getattr(exc, "message", str(exc)),
+                delay,
+            )
+            time.sleep(delay)
+    assert last_exc is not None
+    raise last_exc
+
+
 def classify_ticket(
     ticket: SupportTicket | dict[str, Any] | str,
     *,
@@ -118,7 +173,8 @@ def classify_ticket(
     )
 
     logger.info("Classifying ticket_id=%s", ticket_model.ticket_id)
-    response = client.models.generate_content(
+    response = _generate_content_with_retry(
+        client,
         model=cfg.llm_model,
         contents=prompt,
         config=types.GenerateContentConfig(
@@ -228,7 +284,8 @@ def run_tool_calling_turn(
             round_index,
             ticket_model.ticket_id,
         )
-        response = client.models.generate_content(
+        response = _generate_content_with_retry(
+            client,
             model=cfg.llm_model,
             contents=contents,
             config=config,
@@ -279,7 +336,8 @@ def run_tool_calling_turn(
 
         contents.append(types.Content(role="user", parts=response_parts))
     else:
-        response = client.models.generate_content(
+        response = _generate_content_with_retry(
+            client,
             model=cfg.llm_model,
             contents=contents,
             config=config,
@@ -440,7 +498,8 @@ def generate_grounded_recommendations(
         "In summary, separate documented steps from any remaining uncertainty."
     )
 
-    response = client.models.generate_content(
+    response = _generate_content_with_retry(
+        client,
         model=cfg.llm_model,
         contents=prompt,
         config=types.GenerateContentConfig(
@@ -534,8 +593,6 @@ def analyze_ticket_with_trace(
     cfg: Settings | None = None,
 ) -> TicketAnalysisTrace:
     """Run the full agent path and return response + evaluation trace."""
-    import time
-
     cfg = cfg or settings
     started = time.perf_counter()
     ticket_model = _as_ticket(ticket, ticket_id=ticket_id)

@@ -93,15 +93,25 @@ def analyze_ticket(ticket: SupportTicket) -> AgentResponse:
             detail=_client_error_detail(exc),
         ) from exc
     except genai_errors.ServerError as exc:
+        upstream = getattr(exc, "message", None) or str(exc)
         logger.error(
             "Gemini server error ticket_id=%s: %s",
             ticket.ticket_id,
-            getattr(exc, "message", str(exc)),
+            upstream,
         )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Upstream Gemini service error. Please try again shortly.",
-        ) from exc
+        # High demand / temporary Gemini outages are unavailable, not a bad gateway.
+        detail = (
+            f"Upstream Gemini service error: {upstream}"
+            if upstream
+            else "Upstream Gemini service error. Please try again shortly."
+        )
+        lowered = upstream.lower()
+        http_status = (
+            status.HTTP_503_SERVICE_UNAVAILABLE
+            if "high demand" in lowered or "try again" in lowered
+            else status.HTTP_502_BAD_GATEWAY
+        )
+        raise HTTPException(status_code=http_status, detail=detail) from exc
     except RuntimeError as exc:
         logger.error("Agent runtime error ticket_id=%s: %s", ticket.ticket_id, exc)
         raise HTTPException(
