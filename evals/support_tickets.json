@@ -1,0 +1,263 @@
+{
+  "version": "1.0",
+  "description": "Fixed evaluation set for the agentic technical support MVP. Expected outcomes are frozen against this corpus and must not be changed to match agent answers.",
+  "corpus_documents": [
+    "authentication_failures.md",
+    "database_connection_failures.md",
+    "database_timeouts_and_locks.md",
+    "dns_resolution_failures.md",
+    "file_upload_failures.md",
+    "http_502_bad_gateway.md",
+    "http_503_service_unavailable.md",
+    "http_504_gateway_timeout.md",
+    "ip_configuration_troubleshooting.md",
+    "multipart_upload_and_storage.md",
+    "network_connectivity_basics.md",
+    "password_reset_and_account_access.md",
+    "session_tokens_and_sso.md",
+    "vpn_and_remote_access.md"
+  ],
+  "categories": [
+    "network",
+    "database",
+    "authentication",
+    "application",
+    "other"
+  ],
+  "summary": {
+    "tickets_with_relevant_documentation": 10,
+    "tickets_with_insufficient_or_irrelevant_evidence": 5,
+    "ambiguous_or_underspecified_tickets": 3,
+    "tickets_that_should_not_require_retrieval": 2,
+    "total": 20
+  },
+  "tickets": [
+    {
+      "ticket_id": "E-REL-001",
+      "group": "relevant_documentation",
+      "description": "Users cannot connect to the application because the database connection keeps timing out.",
+      "expected_category": "database",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "database_connection_failures.md",
+        "database_timeouts_and_locks.md"
+      ],
+      "fallback_expected": false,
+      "notes": "Clear DB timeout symptoms; corpus has connection and lock/timeout guidance."
+    },
+    {
+      "ticket_id": "E-REL-002",
+      "group": "relevant_documentation",
+      "description": "Customers are receiving HTTP 504 gateway timeout errors on the checkout page after the latest deploy.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "http_504_gateway_timeout.md"
+      ],
+      "fallback_expected": false,
+      "notes": "504 is explicitly documented."
+    },
+    {
+      "ticket_id": "E-REL-003",
+      "group": "relevant_documentation",
+      "description": "A user cannot authenticate after a password reset. They still see invalid password even though the reset email completed.",
+      "expected_category": "authentication",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "password_reset_and_account_access.md",
+        "authentication_failures.md"
+      ],
+      "fallback_expected": false,
+      "notes": "Post-reset login failure is covered by password-reset and auth docs."
+    },
+    {
+      "ticket_id": "E-REL-004",
+      "group": "relevant_documentation",
+      "description": "Employees cannot resolve internal hostnames after the DNS change. IP access still works.",
+      "expected_category": "network",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "dns_resolution_failures.md",
+        "network_connectivity_basics.md"
+      ],
+      "fallback_expected": false,
+      "notes": "Classic DNS failure pattern."
+    },
+    {
+      "ticket_id": "E-REL-005",
+      "group": "relevant_documentation",
+      "description": "Large file uploads fail with HTTP 413. Smaller files upload successfully.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "file_upload_failures.md"
+      ],
+      "fallback_expected": false,
+      "notes": "413 / size-limit upload failures are documented."
+    },
+    {
+      "ticket_id": "E-REL-006",
+      "group": "relevant_documentation",
+      "description": "The application reports too many connections when opening new database sessions under peak load.",
+      "expected_category": "database",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "database_connection_failures.md"
+      ],
+      "fallback_expected": false,
+      "notes": "Connection pool / max connections covered in DB connection doc."
+    },
+    {
+      "ticket_id": "E-REL-007",
+      "group": "relevant_documentation",
+      "description": "SSO login succeeds at the identity provider, but users lose their session immediately when returning to the app.",
+      "expected_category": "authentication",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "session_tokens_and_sso.md",
+        "authentication_failures.md"
+      ],
+      "fallback_expected": false,
+      "notes": "SSO callback vs local session issues are documented."
+    },
+    {
+      "ticket_id": "E-REL-008",
+      "group": "relevant_documentation",
+      "description": "Remote staff connect to VPN successfully but cannot reach internal application subnets or resolve internal DNS names.",
+      "expected_category": "network",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "vpn_and_remote_access.md",
+        "dns_resolution_failures.md"
+      ],
+      "fallback_expected": false,
+      "notes": "VPN connected but routes/DNS broken is covered."
+    },
+    {
+      "ticket_id": "E-REL-009",
+      "group": "relevant_documentation",
+      "description": "Workstations show APIPA addresses (169.254.x.x) and cannot reach the default gateway.",
+      "expected_category": "network",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "ip_configuration_troubleshooting.md",
+        "network_connectivity_basics.md"
+      ],
+      "fallback_expected": false,
+      "notes": "DHCP / IP configuration failures are documented."
+    },
+    {
+      "ticket_id": "E-REL-010",
+      "group": "relevant_documentation",
+      "description": "The reverse proxy returns HTTP 502 Bad Gateway right after rolling out new app containers.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [
+        "http_502_bad_gateway.md",
+        "http_503_service_unavailable.md"
+      ],
+      "fallback_expected": false,
+      "notes": "502 after deploy / readiness issues are documented; 503 may also be related."
+    },
+    {
+      "ticket_id": "E-IRR-001",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Kubernetes pods keep CrashLooping after we enabled a new sidecars resource quota policy in GKE.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "No Kubernetes/GKE documentation in the corpus; retrieval should not yield reliable evidence."
+    },
+    {
+      "ticket_id": "E-IRR-002",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Our Salesforce opportunity sync job fails with BULK_API_LIMIT_EXCEEDED when pushing account updates.",
+      "expected_category": "other",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "Salesforce API limits are outside the technical docs corpus."
+    },
+    {
+      "ticket_id": "E-IRR-003",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Windows print spooler crashes when users print duplex jobs to the new Kyocera fleet.",
+      "expected_category": "other",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "Printer/spooler issues are not covered by the knowledge base."
+    },
+    {
+      "ticket_id": "E-IRR-004",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Terraform apply fails with Error acquiring the state lock when two pipelines run against the same workspace.",
+      "expected_category": "other",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "Infrastructure-as-code tooling is outside the current docs."
+    },
+    {
+      "ticket_id": "E-IRR-005",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Apache Kafka consumers lag behind and throw OffsetOutOfRangeException after the retention policy change.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "Kafka streaming ops are not in the corpus; expect weak/irrelevant retrieval and fallback."
+    },
+    {
+      "ticket_id": "E-AMB-001",
+      "group": "ambiguous_or_underspecified",
+      "description": "The application is broken for some users.",
+      "expected_category": "other",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "No symptoms, errors, or subsystem named; insufficient to ground recommendations."
+    },
+    {
+      "ticket_id": "E-AMB-002",
+      "group": "ambiguous_or_underspecified",
+      "description": "Something is wrong with login or maybe the network. Please fix ASAP.",
+      "expected_category": "other",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "Conflicting domains with no concrete evidence; fallback expected."
+    },
+    {
+      "ticket_id": "E-AMB-003",
+      "group": "ambiguous_or_underspecified",
+      "description": "It stopped working after yesterday.",
+      "expected_category": "other",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "Underspecified; no product area or error details."
+    },
+    {
+      "ticket_id": "E-NRT-001",
+      "group": "should_not_require_retrieval",
+      "description": "Please add me to the #payments-oncall Slack channel and confirm my pager rotation for next week.",
+      "expected_category": "other",
+      "retrieval_appropriate": false,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "Operational/access request, not a technical troubleshooting ticket; retrieval should not be used to invent steps."
+    },
+    {
+      "ticket_id": "E-NRT-002",
+      "group": "should_not_require_retrieval",
+      "description": "Thanks for resolving ticket INC-4421 yesterday. No further action needed from support.",
+      "expected_category": "other",
+      "retrieval_appropriate": false,
+      "expected_supporting_documents": [],
+      "fallback_expected": true,
+      "notes": "Acknowledgement / closure message; documentation search is not appropriate."
+    }
+  ]
+}
