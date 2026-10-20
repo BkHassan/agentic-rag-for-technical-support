@@ -37,6 +37,13 @@ def health() -> dict[str, str]:
         "Ticket category, recommendations or fallback message, source references, "
         "and evidence status flags."
     ),
+    responses={
+        400: {"description": "Invalid request or missing configuration (e.g. API key)"},
+        429: {"description": "Gemini API rate limit exceeded"},
+        502: {"description": "Upstream Gemini client/server error"},
+        503: {"description": "Agent runtime unavailable"},
+        422: {"description": "Request validation error"},
+    },
     openapi_extra={
         "requestBody": {
             "content": {
@@ -128,6 +135,8 @@ def _client_error_http_status(exc: genai_errors.ClientError) -> int:
 
     if code_int == 429:
         return status.HTTP_429_TOO_MANY_REQUESTS
+    if code_int == 404:
+        return status.HTTP_502_BAD_GATEWAY
     if code_int in {401, 403}:
         return status.HTTP_502_BAD_GATEWAY
     if 400 <= code_int < 500:

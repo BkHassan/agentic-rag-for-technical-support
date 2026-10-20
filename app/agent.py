@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
 from app.config import Settings, settings
@@ -264,10 +265,15 @@ def run_tool_calling_turn(
                     "results": hits,
                 }
             )
+            # Preserve function_call.id for Gemini 3 tool-context mapping.
+            call_id = getattr(call, "id", None)
             response_parts.append(
-                types.Part.from_function_response(
-                    name=name,
-                    response={"result": result},
+                types.Part(
+                    function_response=types.FunctionResponse(
+                        id=call_id,
+                        name=name,
+                        response={"result": result},
+                    )
                 )
             )
 
@@ -570,6 +576,12 @@ def analyze_ticket_with_trace(
             latency_ms=(time.perf_counter() - started) * 1000.0,
             error=None,
         )
+    except ValueError:
+        # Config / input problems (e.g. missing GOOGLE_API_KEY) should surface to the API.
+        raise
+    except (genai_errors.ClientError, genai_errors.ServerError):
+        # Let FastAPI map Gemini client/server failures to the correct HTTP status.
+        raise
     except Exception as exc:  # noqa: BLE001 - capture for eval reporting
         logger.exception("analyze_ticket_with_trace failed for %s", ticket_model.ticket_id)
         # Minimal failed response so callers can still score the row.

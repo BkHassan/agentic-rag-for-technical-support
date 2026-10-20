@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     google_api_key: str = Field(default="")
 
     # LLM used for classification, tool use, and recommendations.
-    llm_model: str = "gemini-2.0-flash"
+    # gemini-2.0-flash was shut down; use a current Flash model.
+    llm_model: str = "gemini-3.8-flash"
 
     # Text RAG: gemini-embedding-001 returns one embedding per input string
     # and supports task_type (RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY).
