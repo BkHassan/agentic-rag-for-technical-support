@@ -49,6 +49,10 @@ Copy-Item .env.example .env.local
 Only `NEXT_PUBLIC_*` values are compiled into the browser bundle. Do not put secrets in any
 of them; `GOOGLE_API_KEY` belongs in the backend's `.env` only.
 
+## Docker
+
+From the repository root, `docker compose up --build` starts this console at http://localhost:8080 and the API at http://127.0.0.1:8000. nginx serves the built files and forwards `/api` to the API, the same way the Vite proxy does in development.
+
 ## Checks
 
 ```powershell
