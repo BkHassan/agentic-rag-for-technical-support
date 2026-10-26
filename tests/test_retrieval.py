@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import os
 
 import pytest
 
 from app.retrieval.retrieval import filter_by_relevance, retrieve
 
-REQUIRES_API_KEY = pytest.mark.skipif(
-    not os.getenv("GOOGLE_API_KEY"),
-    reason="GOOGLE_API_KEY is required for live embedding/retrieval tests",
-)
+REQUIRES_API_KEY = pytest.mark.live  # opt-in; see tests/conftest.py
 
 
 def test_filter_by_relevance_uses_distance_threshold() -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from types import SimpleNamespace
 
 import pytest
@@ -15,10 +14,7 @@ from app.agent import (
 )
 from app.schemas import SupportTicket, TicketCategory, TicketClassification
 
-REQUIRES_API_KEY = pytest.mark.skipif(
-    not os.getenv("GOOGLE_API_KEY"),
-    reason="GOOGLE_API_KEY is required for live Gemini classification tests",
-)
+REQUIRES_API_KEY = pytest.mark.live  # opt-in; see tests/conftest.py
 
 
 def test_parse_classification_from_json_text() -> None:
