@@ -1,69 +1,64 @@
 # Evaluation results
 
-Fixed dataset: [`evals/support_tickets.json`](../support_tickets.json) (20 tickets).
+- Generated at: `2026-10-25T15:56:27.216670+00:00`
+- Dataset: `evals/support_tickets.json`
+- Model: `gemini-3.5-flash-lite`
+- Sufficiency rule: best distance <= 0.3687 and contrast@5 >= 0.0442 (calibrated in `evals/results/CALIBRATION.md`)
+- Tickets scored: **19/20** (95%)
+- API errors excluded from the scores: 0
+- Stopped early for daily quota: False
 
-## How to reproduce
+These rates describe this fixed set only. They are not a production reliability claim.
 
-1. Set `GOOGLE_API_KEY` in `.env` (never commit the real key).
-2. From the project root:
-
-```bash
-python -m evals.run_evaluation
-```
-
-Optional:
-
-```bash
-python -m evals.run_evaluation --force-reingest
-python -m evals.run_evaluation --ticket-id E-REL-001
-python -m evals.run_evaluation --limit 5
-```
-
-Artifacts:
-
-| File | Purpose |
-|---|---|
-| `latest.json` | Full machine-readable report (gitignored) |
-| `latest.md` | Human summary of the last run (gitignored) |
-| `RESULTS.md` | Documented snapshot (this file; overwritten on full-suite runs) |
-
-Offline scoring tests (no API key):
-
-```bash
-pytest tests/test_eval_scoring.py -q
-```
-
-## Behaviors scored
-
-| Behavior | Pass condition |
-|---|---|
-| Tool selection | Gemini requests retrieval iff `retrieval_appropriate` is true |
-| Answer grounding | For non-fallback tickets, citations overlap expected docs and come from retrieved evidence |
-| Fallback | Fallback when evidence is insufficient; grounded recommendations when evidence is adequate |
-
-## Live run status
-
-**Not executed in the publish environment** — no `GOOGLE_API_KEY` / Chroma index was available when documenting and publishing.
-
-After a local full run, replace this section with the generated summary table, list failing ticket IDs (if any), and note fixes.
-
-### Placeholder summary table
+## Core behaviors
 
 | Behavior | Passed | Total | Rate |
 |---|---:|---:|---:|
-| Tool selection | — | 20 | pending live run |
-| Answer grounding | — | applicable non-fallback tickets | pending live run |
-| Fallback behavior | — | 20 | pending live run |
+| Tool selection | 19 | 20 | 95% |
+| Answer grounding | 9 | 9 | 100% |
+| Fallback / clarification outcome | 19 | 20 | 95% |
 
-## Limits of this evaluation
+## Outcomes (rows: expected, columns: returned)
 
-A successful run on this 20-ticket set demonstrates the intended **tool selection**, **grounding**, and **fallback** behaviors **on those cases**.
+| Expected | grounded_answer | clarification_needed | fallback |
+|---|---:|---:|---:|
+| grounded_answer | 9 | 1 | 0 |
+| clarification_needed | 0 | 3 | 0 |
+| fallback | 0 | 0 | 7 |
 
-It does **not**:
+## Operational notes
 
-- establish production-level reliability or SLA readiness
-- prove generalization beyond the curated docs and tickets
-- remove Gemini non-determinism, rate limits, or threshold sensitivity
-- replace broader QA, security review, or human escalation processes
+- API errors: 0
+- Avg latency: 11238 ms
+- Max latency: 46162 ms
 
-Treat published numbers (when present) as evidence of mechanism on a frozen eval set, not as a production certification.
+## Failures
+
+- `E-REL-004` (relevant_documentation): tool_selection, outcome
+  - tool_selection: Failed to request retrieval when documentation was needed
+  - outcome: Expected grounded_answer but returned clarification_needed
+
+## Per-ticket results
+
+| Ticket | Group | Pass | Tool | Grounding | Outcome (expected -> returned) | Latency ms |
+|---|---|:---:|:---:|:---:|---|---:|
+| E-REL-001 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 10777 |
+| E-REL-002 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 9871 |
+| E-REL-003 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 10291 |
+| E-REL-004 | relevant_documentation | fail | fail | skip | fail grounded_answer -> clarification_needed | 2354 |
+| E-REL-005 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 46162 |
+| E-REL-006 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 10784 |
+| E-REL-007 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 11631 |
+| E-REL-008 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 10866 |
+| E-REL-009 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 30859 |
+| E-REL-010 | relevant_documentation | pass | pass | pass | pass grounded_answer -> grounded_answer | 10290 |
+| E-IRR-001 | insufficient_or_irrelevant_evidence | pass | pass | skip | pass fallback -> fallback | 11528 |
+| E-IRR-002 | insufficient_or_irrelevant_evidence | pass | pass | skip | pass fallback -> fallback | 11888 |
+| E-IRR-003 | insufficient_or_irrelevant_evidence | pass | pass | skip | pass fallback -> fallback | 12044 |
+| E-IRR-004 | insufficient_or_irrelevant_evidence | pass | pass | skip | pass fallback -> fallback | 8650 |
+| E-IRR-005 | insufficient_or_irrelevant_evidence | pass | pass | skip | pass fallback -> fallback | 12835 |
+| E-AMB-001 | ambiguous_or_underspecified | pass | pass | skip | pass clarification_needed -> clarification_needed | 2514 |
+| E-AMB-002 | ambiguous_or_underspecified | pass | pass | skip | pass clarification_needed -> clarification_needed | 2228 |
+| E-AMB-003 | ambiguous_or_underspecified | pass | pass | skip | pass clarification_needed -> clarification_needed | 2369 |
+| E-NRT-001 | should_not_require_retrieval | pass | pass | skip | pass fallback -> fallback | 3763 |
+| E-NRT-002 | should_not_require_retrieval | pass | pass | skip | pass fallback -> fallback | 3064 |
