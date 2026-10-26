@@ -1,0 +1,1511 @@
+{
+  "generated_at": "2026-10-25T14:45:24.971717+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "chunk_count": 14,
+  "cost": {
+    "unsafe_answer": 2.0,
+    "missed_answer": 1.0
+  },
+  "selected_rule": {
+    "family": "distance+contrast",
+    "max_distance": 0.3687194883823395,
+    "min_contrast": 0.0442330539226532,
+    "contrast_rank": 5,
+    "unsafe": 0,
+    "missed": 0,
+    "cost": 0.0,
+    "margin": 0.06532286609425038
+  },
+  "family_results": [
+    {
+      "family": "distance",
+      "max_distance": 0.3232264518737793,
+      "min_contrast": null,
+      "contrast_rank": null,
+      "unsafe": 0,
+      "missed": 4,
+      "cost": 4.0,
+      "margin": 0.01244071447867382,
+      "leave_one_out": {
+        "unsafe_answers": [
+          "C-VAG-02"
+        ],
+        "missed_answers": [
+          "C-ANS-02",
+          "C-ANS-14",
+          "C-ANS-15",
+          "C-ANS-19",
+          "C-ANS-25"
+        ],
+        "cost": 7.0,
+        "accuracy": 0.8867924528301887
+      }
+    },
+    {
+      "family": "contrast",
+      "max_distance": null,
+      "min_contrast": 0.02888604998588562,
+      "contrast_rank": 2,
+      "unsafe": 0,
+      "missed": 3,
+      "cost": 3.0,
+      "margin": 0.011296479520804223,
+      "leave_one_out": {
+        "unsafe_answers": [
+          "C-OOC-05"
+        ],
+        "missed_answers": [
+          "C-ANS-02",
+          "C-ANS-15",
+          "C-ANS-24",
+          "C-ANS-25"
+        ],
+        "cost": 6.0,
+        "accuracy": 0.9056603773584906
+      }
+    },
+    {
+      "family": "distance+contrast",
+      "max_distance": 0.3687194883823395,
+      "min_contrast": 0.027454137802124023,
+      "contrast_rank": 2,
+      "unsafe": 0,
+      "missed": 3,
+      "cost": 3.0,
+      "margin": 0.02835881028237255,
+      "leave_one_out": {
+        "unsafe_answers": [
+          "C-VAG-02"
+        ],
+        "missed_answers": [
+          "C-ANS-02",
+          "C-ANS-15",
+          "C-ANS-24"
+        ],
+        "cost": 5.0,
+        "accuracy": 0.9245283018867925
+      }
+    },
+    {
+      "family": "contrast",
+      "max_distance": null,
+      "min_contrast": 0.051960110664367676,
+      "contrast_rank": 3,
+      "unsafe": 0,
+      "missed": 2,
+      "cost": 2.0,
+      "margin": 0.19405809576774782,
+      "leave_one_out": {
+        "unsafe_answers": [
+          "C-OOC-05"
+        ],
+        "missed_answers": [
+          "C-ANS-02",
+          "C-ANS-25"
+        ],
+        "cost": 4.0,
+        "accuracy": 0.9433962264150944
+      }
+    },
+    {
+      "family": "distance+contrast",
+      "max_distance": 0.3687194883823395,
+      "min_contrast": 0.03576025366783142,
+      "contrast_rank": 3,
+      "unsafe": 0,
+      "missed": 0,
+      "cost": 0.0,
+      "margin": 0.04010702929045069,
+      "leave_one_out": {
+        "unsafe_answers": [
+          "C-VAG-02"
+        ],
+        "missed_answers": [],
+        "cost": 2.0,
+        "accuracy": 0.9811320754716981
+      }
+    },
+    {
+      "family": "contrast",
+      "max_distance": null,
+      "min_contrast": 0.04577118158340454,
+      "contrast_rank": 4,
+      "unsafe": 0,
+      "missed": 1,
+      "cost": 1.0,
+      "margin": 0.021306645657783133,
+      "leave_one_out": {
+        "unsafe_answers": [
+          "C-OOC-05"
+        ],
+        "missed_answers": [
+          "C-ANS-02",
+          "C-ANS-25"
+        ],
+        "cost": 4.0,
+        "accuracy": 0.9433962264150944
+      }
+    },
+    {
+      "family": "distance+contrast",
+      "max_distance": 0.3687194883823395,
+      "min_contrast": 0.03952896595001221,
+      "contrast_rank": 4,
+      "unsafe": 0,
+      "missed": 0,
+      "cost": 0.0,
+      "margin": 0.03465946594119658,
+      "leave_one_out": {
+        "unsafe_answers": [
+          "C-VAG-02"
+        ],
+        "missed_answers": [],
+        "cost": 2.0,
+        "accuracy": 0.9811320754716981
+      }
+    },
+    {
+      "family": "contrast",
+      "max_distance": null,
+      "min_contrast": 0.04896467924118042,
+      "contrast_rank": 5,
+      "unsafe": 0,
+      "missed": 0,
+      "cost": 0.0,
+      "margin": 0.035745827096647434,
+      "leave_one_out": {
+        "unsafe_answers": [
+          "C-OOC-05"
+        ],
+        "missed_answers": [],
+        "cost": 2.0,
+        "accuracy": 0.9811320754716981
+      }
+    },
+    {
+      "family": "distance+contrast",
+      "max_distance": 0.3687194883823395,
+      "min_contrast": 0.0442330539226532,
+      "contrast_rank": 5,
+      "unsafe": 0,
+      "missed": 0,
+      "cost": 0.0,
+      "margin": 0.06532286609425038,
+      "leave_one_out": {
+        "unsafe_answers": [],
+        "missed_answers": [],
+        "cost": 0.0,
+        "accuracy": 1.0
+      }
+    }
+  ],
+  "leave_one_out": {
+    "unsafe_answers": [],
+    "missed_answers": [],
+    "cost": 0.0,
+    "accuracy": 1.0
+  },
+  "baseline": {
+    "max_distance": 0.45,
+    "unsafe_answers": [
+      "C-OOC-01",
+      "C-OOC-04",
+      "C-OOC-05",
+      "C-OOC-07",
+      "C-OOC-09",
+      "C-OOC-10",
+      "C-OOC-11",
+      "C-OOC-14",
+      "C-VAG-01",
+      "C-VAG-02",
+      "C-VAG-03",
+      "C-VAG-04",
+      "C-VAG-05",
+      "C-VAG-06",
+      "C-VAG-07",
+      "C-VAG-08",
+      "C-VAG-09",
+      "C-VAG-10"
+    ],
+    "missed_answers": []
+  },
+  "examples": [
+    {
+      "ticket_id": "C-ANS-01",
+      "group": "answerable",
+      "label": "answer",
+      "description": "nslookup for intranet.corp.local returns NXDOMAIN on laptops, but the record exists on the DNS server.",
+      "expected_documents": [
+        "dns_resolution_failures.md"
+      ],
+      "best_distance": 0.2964749336242676,
+      "contrast": {
+        "2": 0.06329572200775146,
+        "3": 0.07810217142105103,
+        "4": 0.09164518117904663,
+        "5": 0.14560848474502563
+      },
+      "top_documents": [
+        "dns_resolution_failures.md",
+        "vpn_and_remote_access.md",
+        "ip_configuration_troubleshooting.md",
+        "network_connectivity_basics.md",
+        "password_reset_and_account_access.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-02",
+      "group": "answerable",
+      "label": "answer",
+      "description": "We changed the A record for the API host, and some clients still go to the old IP address.",
+      "expected_documents": [
+        "dns_resolution_failures.md"
+      ],
+      "best_distance": 0.3461850881576538,
+      "contrast": {
+        "2": 0.0012756586074829102,
+        "3": 0.040430307388305664,
+        "4": 0.04133540391921997,
+        "5": 0.05319058895111084
+      },
+      "top_documents": [
+        "dns_resolution_failures.md",
+        "ip_configuration_troubleshooting.md",
+        "vpn_and_remote_access.md",
+        "http_504_gateway_timeout.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-03",
+      "group": "answerable",
+      "label": "answer",
+      "description": "The load balancer returns 504 when the reports endpoint runs a long export.",
+      "expected_documents": [
+        "http_504_gateway_timeout.md"
+      ],
+      "best_distance": 0.2701075077056885,
+      "contrast": {
+        "2": 0.06147056818008423,
+        "3": 0.08292198181152344,
+        "4": 0.10079443454742432,
+        "5": 0.1403833031654358
+      },
+      "top_documents": [
+        "http_504_gateway_timeout.md",
+        "database_timeouts_and_locks.md",
+        "http_502_bad_gateway.md",
+        "http_503_service_unavailable.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-04",
+      "group": "answerable",
+      "label": "answer",
+      "description": "API calls through nginx fail with a gateway timeout after 60 seconds while the backend is still processing.",
+      "expected_documents": [
+        "http_504_gateway_timeout.md"
+      ],
+      "best_distance": 0.29791051149368286,
+      "contrast": {
+        "2": 0.06047189235687256,
+        "3": 0.07085871696472168,
+        "4": 0.11449205875396729,
+        "5": 0.12254554033279419
+      },
+      "top_documents": [
+        "http_504_gateway_timeout.md",
+        "http_502_bad_gateway.md",
+        "database_timeouts_and_locks.md",
+        "http_503_service_unavailable.md",
+        "file_upload_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-05",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Our service returns 503 Service Unavailable during traffic spikes before autoscaling catches up.",
+      "expected_documents": [
+        "http_503_service_unavailable.md"
+      ],
+      "best_distance": 0.2576090097427368,
+      "contrast": {
+        "2": 0.06609475612640381,
+        "3": 0.0933387279510498,
+        "4": 0.12064087390899658,
+        "5": 0.14184331893920898
+      },
+      "top_documents": [
+        "http_503_service_unavailable.md",
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "database_timeouts_and_locks.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-06",
+      "group": "answerable",
+      "label": "answer",
+      "description": "The site still shows a maintenance page and 503 errors even though maintenance finished an hour ago.",
+      "expected_documents": [
+        "http_503_service_unavailable.md"
+      ],
+      "best_distance": 0.3040562868118286,
+      "contrast": {
+        "2": 0.06116950511932373,
+        "3": 0.07063370943069458,
+        "4": 0.10299277305603027,
+        "5": 0.11237245798110962
+      },
+      "top_documents": [
+        "http_503_service_unavailable.md",
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "database_connection_failures.md",
+        "database_timeouts_and_locks.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-07",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Nginx logs 'upstream prematurely closed connection' and clients get 502 errors.",
+      "expected_documents": [
+        "http_502_bad_gateway.md"
+      ],
+      "best_distance": 0.2796899080276489,
+      "contrast": {
+        "2": 0.05699658393859863,
+        "3": 0.0917852520942688,
+        "4": 0.1074303388595581,
+        "5": 0.10995107889175415
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "http_503_service_unavailable.md",
+        "database_timeouts_and_locks.md",
+        "file_upload_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-08",
+      "group": "answerable",
+      "label": "answer",
+      "description": "We see intermittent 502 Bad Gateway responses when idle keep-alive connections to the backend are reused.",
+      "expected_documents": [
+        "http_502_bad_gateway.md"
+      ],
+      "best_distance": 0.24687469005584717,
+      "contrast": {
+        "2": 0.056385159492492676,
+        "3": 0.08457392454147339,
+        "4": 0.12172287702560425,
+        "5": 0.15160614252090454
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "http_503_service_unavailable.md",
+        "database_timeouts_and_locks.md",
+        "session_tokens_and_sso.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-09",
+      "group": "answerable",
+      "label": "answer",
+      "description": "The app fails to start with 'connection refused' on port 5432 to the Postgres server.",
+      "expected_documents": [
+        "database_connection_failures.md"
+      ],
+      "best_distance": 0.29076701402664185,
+      "contrast": {
+        "2": 0.11352759599685669,
+        "3": 0.11579793691635132,
+        "4": 0.13603198528289795,
+        "5": 0.13827860355377197
+      },
+      "top_documents": [
+        "database_connection_failures.md",
+        "http_502_bad_gateway.md",
+        "database_timeouts_and_locks.md",
+        "authentication_failures.md",
+        "http_504_gateway_timeout.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-10",
+      "group": "answerable",
+      "label": "answer",
+      "description": "After rotating the database password, the API can no longer open connections to MySQL.",
+      "expected_documents": [
+        "database_connection_failures.md"
+      ],
+      "best_distance": 0.3113480806350708,
+      "contrast": {
+        "2": 0.06562042236328125,
+        "3": 0.09395140409469604,
+        "4": 0.10474550724029541,
+        "5": 0.10655856132507324
+      },
+      "top_documents": [
+        "database_connection_failures.md",
+        "password_reset_and_account_access.md",
+        "authentication_failures.md",
+        "database_timeouts_and_locks.md",
+        "session_tokens_and_sso.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-11",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Nightly batch jobs hang waiting on row locks and the database reports deadlocks between transactions.",
+      "expected_documents": [
+        "database_timeouts_and_locks.md"
+      ],
+      "best_distance": 0.2833749055862427,
+      "contrast": {
+        "2": 0.10855531692504883,
+        "3": 0.1343003511428833,
+        "4": 0.14922618865966797,
+        "5": 0.1562337875366211
+      },
+      "top_documents": [
+        "database_timeouts_and_locks.md",
+        "database_connection_failures.md",
+        "http_504_gateway_timeout.md",
+        "http_503_service_unavailable.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-12",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Queries on the orders table became very slow under concurrency and now hit statement timeouts.",
+      "expected_documents": [
+        "database_timeouts_and_locks.md"
+      ],
+      "best_distance": 0.2871096730232239,
+      "contrast": {
+        "2": 0.10379856824874878,
+        "3": 0.12271815538406372,
+        "4": 0.13426631689071655,
+        "5": 0.14033126831054688
+      },
+      "top_documents": [
+        "database_timeouts_and_locks.md",
+        "http_504_gateway_timeout.md",
+        "database_connection_failures.md",
+        "http_503_service_unavailable.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-13",
+      "group": "answerable",
+      "label": "answer",
+      "description": "API requests are rejected with an expired JWT right after login; the server clock looks out of sync.",
+      "expected_documents": [
+        "authentication_failures.md"
+      ],
+      "best_distance": 0.3124086856842041,
+      "contrast": {
+        "2": 0.030495941638946533,
+        "3": 0.0690109133720398,
+        "4": 0.08964526653289795,
+        "5": 0.10100066661834717
+      },
+      "top_documents": [
+        "session_tokens_and_sso.md",
+        "authentication_failures.md",
+        "password_reset_and_account_access.md",
+        "http_504_gateway_timeout.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-14",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Signing in through the identity provider fails with a redirect URI mismatch error.",
+      "expected_documents": [
+        "authentication_failures.md"
+      ],
+      "best_distance": 0.33257752656936646,
+      "contrast": {
+        "2": 0.04719674587249756,
+        "3": 0.08651524782180786,
+        "4": 0.10279899835586548,
+        "5": 0.11927539110183716
+      },
+      "top_documents": [
+        "authentication_failures.md",
+        "session_tokens_and_sso.md",
+        "password_reset_and_account_access.md",
+        "database_connection_failures.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-15",
+      "group": "answerable",
+      "label": "answer",
+      "description": "A user's account was locked after several failed sign-in attempts and they cannot log in.",
+      "expected_documents": [
+        "authentication_failures.md"
+      ],
+      "best_distance": 0.3223564624786377,
+      "contrast": {
+        "2": 0.01048809289932251,
+        "3": 0.1030653715133667,
+        "4": 0.1049187183380127,
+        "5": 0.10685557126998901
+      },
+      "top_documents": [
+        "password_reset_and_account_access.md",
+        "authentication_failures.md",
+        "network_connectivity_basics.md",
+        "vpn_and_remote_access.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-16",
+      "group": "answerable",
+      "label": "answer",
+      "description": "The password reset link says it has expired even though the user just received the email.",
+      "expected_documents": [
+        "password_reset_and_account_access.md"
+      ],
+      "best_distance": 0.30224400758743286,
+      "contrast": {
+        "2": 0.08521169424057007,
+        "3": 0.09770864248275757,
+        "4": 0.14118587970733643,
+        "5": 0.14151924848556519
+      },
+      "top_documents": [
+        "password_reset_and_account_access.md",
+        "session_tokens_and_sso.md",
+        "authentication_failures.md",
+        "http_504_gateway_timeout.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-17",
+      "group": "answerable",
+      "label": "answer",
+      "description": "After changing her password, a user keeps getting rejected because the browser autofills the old one.",
+      "expected_documents": [
+        "password_reset_and_account_access.md"
+      ],
+      "best_distance": 0.30054616928100586,
+      "contrast": {
+        "2": 0.038846611976623535,
+        "3": 0.10194480419158936,
+        "4": 0.11888402700424194,
+        "5": 0.12405663728713989
+      },
+      "top_documents": [
+        "password_reset_and_account_access.md",
+        "authentication_failures.md",
+        "session_tokens_and_sso.md",
+        "dns_resolution_failures.md",
+        "vpn_and_remote_access.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-18",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Users are logged out every few minutes because the access token refresh does not work.",
+      "expected_documents": [
+        "session_tokens_and_sso.md"
+      ],
+      "best_distance": 0.2958836555480957,
+      "contrast": {
+        "2": 0.046919167041778564,
+        "3": 0.08441239595413208,
+        "4": 0.12292337417602539,
+        "5": 0.1318342089653015
+      },
+      "top_documents": [
+        "session_tokens_and_sso.md",
+        "authentication_failures.md",
+        "password_reset_and_account_access.md",
+        "database_connection_failures.md",
+        "http_504_gateway_timeout.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-19",
+      "group": "answerable",
+      "label": "answer",
+      "description": "The session cookie is not sent on cross-site requests after a browser update; SameSite seems to block it.",
+      "expected_documents": [
+        "session_tokens_and_sso.md"
+      ],
+      "best_distance": 0.3492409586906433,
+      "contrast": {
+        "2": 0.08113265037536621,
+        "3": 0.09586495161056519,
+        "4": 0.09843415021896362,
+        "5": 0.10659068822860718
+      },
+      "top_documents": [
+        "session_tokens_and_sso.md",
+        "authentication_failures.md",
+        "password_reset_and_account_access.md",
+        "http_502_bad_gateway.md",
+        "file_upload_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-20",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Remote users on VPN cannot reach the 10.20.0.0/16 application subnet because split-tunnel routes are missing.",
+      "expected_documents": [
+        "vpn_and_remote_access.md"
+      ],
+      "best_distance": 0.27492570877075195,
+      "contrast": {
+        "2": 0.12851232290267944,
+        "3": 0.15226048231124878,
+        "4": 0.16718482971191406,
+        "5": 0.1737450361251831
+      },
+      "top_documents": [
+        "vpn_and_remote_access.md",
+        "network_connectivity_basics.md",
+        "ip_configuration_troubleshooting.md",
+        "dns_resolution_failures.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-21",
+      "group": "answerable",
+      "label": "answer",
+      "description": "The VPN client connects, but the corporate firewall on the laptop blocks the VPN adapter.",
+      "expected_documents": [
+        "vpn_and_remote_access.md"
+      ],
+      "best_distance": 0.30867576599121094,
+      "contrast": {
+        "2": 0.06889820098876953,
+        "3": 0.07203435897827148,
+        "4": 0.09354054927825928,
+        "5": 0.14471369981765747
+      },
+      "top_documents": [
+        "vpn_and_remote_access.md",
+        "network_connectivity_basics.md",
+        "ip_configuration_troubleshooting.md",
+        "dns_resolution_failures.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-22",
+      "group": "answerable",
+      "label": "answer",
+      "description": "A desktop shows a duplicate IP address conflict warning and keeps losing connectivity.",
+      "expected_documents": [
+        "ip_configuration_troubleshooting.md"
+      ],
+      "best_distance": 0.2580631971359253,
+      "contrast": {
+        "2": 0.08614552021026611,
+        "3": 0.13132578134536743,
+        "4": 0.13875454664230347,
+        "5": 0.18164074420928955
+      },
+      "top_documents": [
+        "ip_configuration_troubleshooting.md",
+        "network_connectivity_basics.md",
+        "dns_resolution_failures.md",
+        "vpn_and_remote_access.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-23",
+      "group": "answerable",
+      "label": "answer",
+      "description": "New laptops do not get an address from DHCP; the scope may be exhausted.",
+      "expected_documents": [
+        "ip_configuration_troubleshooting.md"
+      ],
+      "best_distance": 0.31682729721069336,
+      "contrast": {
+        "2": 0.07810306549072266,
+        "3": 0.08906292915344238,
+        "4": 0.1035274863243103,
+        "5": 0.12696856260299683
+      },
+      "top_documents": [
+        "ip_configuration_troubleshooting.md",
+        "network_connectivity_basics.md",
+        "dns_resolution_failures.md",
+        "vpn_and_remote_access.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-24",
+      "group": "answerable",
+      "label": "answer",
+      "description": "A workstation cannot ping its default gateway after being moved to a new desk and VLAN.",
+      "expected_documents": [
+        "network_connectivity_basics.md"
+      ],
+      "best_distance": 0.3141595721244812,
+      "contrast": {
+        "2": 0.009988069534301758,
+        "3": 0.060997188091278076,
+        "4": 0.10548102855682373,
+        "5": 0.12355643510818481
+      },
+      "top_documents": [
+        "ip_configuration_troubleshooting.md",
+        "network_connectivity_basics.md",
+        "vpn_and_remote_access.md",
+        "dns_resolution_failures.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-25",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Large packets are dropped over the site link while small pings work; we suspect an MTU mismatch.",
+      "expected_documents": [
+        "network_connectivity_basics.md"
+      ],
+      "best_distance": 0.35784608125686646,
+      "contrast": {
+        "2": 0.029293954372406006,
+        "3": 0.037627995014190674,
+        "4": 0.046881675720214844,
+        "5": 0.05102819204330444
+      },
+      "top_documents": [
+        "network_connectivity_basics.md",
+        "ip_configuration_troubleshooting.md",
+        "vpn_and_remote_access.md",
+        "http_502_bad_gateway.md",
+        "file_upload_failures.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-26",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Uploading a PDF fails with 415 Unsupported Media Type.",
+      "expected_documents": [
+        "file_upload_failures.md"
+      ],
+      "best_distance": 0.30124878883361816,
+      "contrast": {
+        "2": 0.08421564102172852,
+        "3": 0.12525713443756104,
+        "4": 0.13457757234573364,
+        "5": 0.14911162853240967
+      },
+      "top_documents": [
+        "file_upload_failures.md",
+        "multipart_upload_and_storage.md",
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "http_503_service_unavailable.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-27",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Uploads fail with a generic error because the temp directory disk on the app server is full.",
+      "expected_documents": [
+        "file_upload_failures.md"
+      ],
+      "best_distance": 0.28891050815582275,
+      "contrast": {
+        "2": 0.06480616331100464,
+        "3": 0.11189067363739014,
+        "4": 0.1130484938621521,
+        "5": 0.12317311763763428
+      },
+      "top_documents": [
+        "file_upload_failures.md",
+        "multipart_upload_and_storage.md",
+        "http_503_service_unavailable.md",
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-28",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Large multipart uploads to the S3 bucket leave incomplete uploads and the object never appears.",
+      "expected_documents": [
+        "multipart_upload_and_storage.md"
+      ],
+      "best_distance": 0.23199474811553955,
+      "contrast": {
+        "2": 0.10425359010696411,
+        "3": 0.19591403007507324,
+        "4": 0.19690454006195068,
+        "5": 0.2123836874961853
+      },
+      "top_documents": [
+        "multipart_upload_and_storage.md",
+        "file_upload_failures.md",
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "http_503_service_unavailable.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-ANS-29",
+      "group": "answerable",
+      "label": "answer",
+      "description": "Signed upload URLs expire before large video uploads finish.",
+      "expected_documents": [
+        "multipart_upload_and_storage.md"
+      ],
+      "best_distance": 0.30978792905807495,
+      "contrast": {
+        "2": 0.043206751346588135,
+        "3": 0.07950681447982788,
+        "4": 0.11263775825500488,
+        "5": 0.11271721124649048
+      },
+      "top_documents": [
+        "multipart_upload_and_storage.md",
+        "file_upload_failures.md",
+        "http_504_gateway_timeout.md",
+        "session_tokens_and_sso.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": true,
+      "accepted": true
+    },
+    {
+      "ticket_id": "C-OOC-01",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "The Jenkins pipeline fails because the Gradle build cache is corrupted on the build agent.",
+      "expected_documents": [],
+      "best_distance": 0.42554008960723877,
+      "contrast": {
+        "2": 0.02192211151123047,
+        "3": 0.03389251232147217,
+        "4": 0.03772252798080444,
+        "5": 0.04156494140625
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "file_upload_failures.md",
+        "http_503_service_unavailable.md",
+        "multipart_upload_and_storage.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-02",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "Our iOS app was rejected by App Store review for a missing privacy manifest.",
+      "expected_documents": [],
+      "best_distance": 0.47408562898635864,
+      "contrast": {
+        "2": 0.0026137232780456543,
+        "3": 0.005839824676513672,
+        "4": 0.021362483501434326,
+        "5": 0.026512563228607178
+      },
+      "top_documents": [
+        "database_connection_failures.md",
+        "authentication_failures.md",
+        "password_reset_and_account_access.md",
+        "http_502_bad_gateway.md",
+        "session_tokens_and_sso.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-03",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "An Excel macro crashes when opening the quarterly budget workbook.",
+      "expected_documents": [],
+      "best_distance": 0.46299082040786743,
+      "contrast": {
+        "2": 0.0003973245620727539,
+        "3": 0.006446778774261475,
+        "4": 0.007093846797943115,
+        "5": 0.007308244705200195
+      },
+      "top_documents": [
+        "http_503_service_unavailable.md",
+        "http_502_bad_gateway.md",
+        "file_upload_failures.md",
+        "database_connection_failures.md",
+        "vpn_and_remote_access.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-04",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "The Elasticsearch cluster status is red because primary shards are unassigned.",
+      "expected_documents": [],
+      "best_distance": 0.41427814960479736,
+      "contrast": {
+        "2": 0.011989891529083252,
+        "3": 0.02361607551574707,
+        "4": 0.02896714210510254,
+        "5": 0.03237050771713257
+      },
+      "top_documents": [
+        "http_503_service_unavailable.md",
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "database_connection_failures.md",
+        "database_timeouts_and_locks.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-05",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "Pushing a Docker image to the private registry fails with 'manifest invalid'.",
+      "expected_documents": [],
+      "best_distance": 0.4185197949409485,
+      "contrast": {
+        "2": 0.028478145599365234,
+        "3": 0.042923033237457275,
+        "4": 0.04466068744659424,
+        "5": 0.046901166439056396
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "file_upload_failures.md",
+        "password_reset_and_account_access.md",
+        "authentication_failures.md",
+        "http_504_gateway_timeout.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-06",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "The SAP payroll run produces wrong overtime totals for night-shift workers.",
+      "expected_documents": [],
+      "best_distance": 0.47973549365997314,
+      "contrast": {
+        "2": 0.00492405891418457,
+        "3": 0.008140206336975098,
+        "4": 0.02427762746810913,
+        "5": 0.025476515293121338
+      },
+      "top_documents": [
+        "http_504_gateway_timeout.md",
+        "database_timeouts_and_locks.md",
+        "http_502_bad_gateway.md",
+        "multipart_upload_and_storage.md",
+        "vpn_and_remote_access.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-07",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "Bluetooth headsets disconnect from Teams calls on Windows 11 laptops.",
+      "expected_documents": [],
+      "best_distance": 0.43418943881988525,
+      "contrast": {
+        "2": 0.01424717903137207,
+        "3": 0.028824329376220703,
+        "4": 0.029552936553955078,
+        "5": 0.0383414626121521
+      },
+      "top_documents": [
+        "network_connectivity_basics.md",
+        "vpn_and_remote_access.md",
+        "dns_resolution_failures.md",
+        "session_tokens_and_sso.md",
+        "ip_configuration_troubleshooting.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-08",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "Redis evicts keys unexpectedly after the maxmemory policy was changed to allkeys-lru.",
+      "expected_documents": [],
+      "best_distance": 0.46946221590042114,
+      "contrast": {
+        "2": 0.001511216163635254,
+        "3": 0.006628990173339844,
+        "4": 0.008843600749969482,
+        "5": 0.011425316333770752
+      },
+      "top_documents": [
+        "password_reset_and_account_access.md",
+        "database_timeouts_and_locks.md",
+        "session_tokens_and_sso.md",
+        "http_504_gateway_timeout.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-09",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "The MongoDB replica set keeps electing a new primary every few minutes.",
+      "expected_documents": [],
+      "best_distance": 0.4473617672920227,
+      "contrast": {
+        "2": 0.0011612176895141602,
+        "3": 0.01329493522644043,
+        "4": 0.013435065746307373,
+        "5": 0.024290382862091064
+      },
+      "top_documents": [
+        "database_connection_failures.md",
+        "database_timeouts_and_locks.md",
+        "http_503_service_unavailable.md",
+        "http_502_bad_gateway.md",
+        "session_tokens_and_sso.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-10",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "Stripe webhooks fail signature verification in our billing service.",
+      "expected_documents": [],
+      "best_distance": 0.41101741790771484,
+      "contrast": {
+        "2": 0.004917502403259277,
+        "3": 0.009541690349578857,
+        "4": 0.0181502103805542,
+        "5": 0.018199503421783447
+      },
+      "top_documents": [
+        "authentication_failures.md",
+        "http_502_bad_gateway.md",
+        "session_tokens_and_sso.md",
+        "file_upload_failures.md",
+        "http_503_service_unavailable.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-11",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "A GPU driver update broke CUDA on the machine-learning training servers.",
+      "expected_documents": [],
+      "best_distance": 0.41498684883117676,
+      "contrast": {
+        "2": 0.008086800575256348,
+        "3": 0.01639014482498169,
+        "4": 0.02257847785949707,
+        "5": 0.026707053184509277
+      },
+      "top_documents": [
+        "database_connection_failures.md",
+        "http_502_bad_gateway.md",
+        "http_503_service_unavailable.md",
+        "database_timeouts_and_locks.md",
+        "password_reset_and_account_access.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-12",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "Outlook calendar invites show the wrong time zone for attendees in India.",
+      "expected_documents": [],
+      "best_distance": 0.5120301842689514,
+      "contrast": {
+        "2": 0.00457686185836792,
+        "3": 0.004700839519500732,
+        "4": 0.010044395923614502,
+        "5": 0.017282187938690186
+      },
+      "top_documents": [
+        "password_reset_and_account_access.md",
+        "http_504_gateway_timeout.md",
+        "database_timeouts_and_locks.md",
+        "authentication_failures.md",
+        "http_502_bad_gateway.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-13",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "The Jira workflow transition to Done is missing for the support project.",
+      "expected_documents": [],
+      "best_distance": 0.4703431725502014,
+      "contrast": {
+        "2": 0.0024277567863464355,
+        "3": 0.007065296173095703,
+        "4": 0.012611091136932373,
+        "5": 0.01754981279373169
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "http_504_gateway_timeout.md",
+        "http_503_service_unavailable.md",
+        "password_reset_and_account_access.md",
+        "network_connectivity_basics.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-OOC-14",
+      "group": "out_of_corpus",
+      "label": "fallback",
+      "description": "A React Native build fails with a Metro bundler module resolution error.",
+      "expected_documents": [],
+      "best_distance": 0.44554007053375244,
+      "contrast": {
+        "2": 0.009945988655090332,
+        "3": 0.011285126209259033,
+        "4": 0.012948095798492432,
+        "5": 0.015689849853515625
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "database_connection_failures.md",
+        "dns_resolution_failures.md",
+        "file_upload_failures.md",
+        "http_504_gateway_timeout.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-01",
+      "group": "vague",
+      "label": "fallback",
+      "description": "Everything is slow today.",
+      "expected_documents": [],
+      "best_distance": 0.34005093574523926,
+      "contrast": {
+        "2": 0.021202266216278076,
+        "3": 0.025570034980773926,
+        "4": 0.031419992446899414,
+        "5": 0.03213942050933838
+      },
+      "top_documents": [
+        "database_timeouts_and_locks.md",
+        "http_504_gateway_timeout.md",
+        "http_503_service_unavailable.md",
+        "network_connectivity_basics.md",
+        "dns_resolution_failures.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-02",
+      "group": "vague",
+      "label": "fallback",
+      "description": "The system is down, please help.",
+      "expected_documents": [],
+      "best_distance": 0.3240964412689209,
+      "contrast": {
+        "2": 0.026430130004882812,
+        "3": 0.03263920545578003,
+        "4": 0.03566616773605347,
+        "5": 0.04046213626861572
+      },
+      "top_documents": [
+        "http_503_service_unavailable.md",
+        "database_connection_failures.md",
+        "http_502_bad_gateway.md",
+        "network_connectivity_basics.md",
+        "authentication_failures.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-03",
+      "group": "vague",
+      "label": "fallback",
+      "description": "Users are complaining about errors.",
+      "expected_documents": [],
+      "best_distance": 0.3451087474822998,
+      "contrast": {
+        "2": 0.005369782447814941,
+        "3": 0.010963082313537598,
+        "4": 0.021567702293395996,
+        "5": 0.02214944362640381
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "authentication_failures.md",
+        "file_upload_failures.md",
+        "http_503_service_unavailable.md",
+        "vpn_and_remote_access.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-04",
+      "group": "vague",
+      "label": "fallback",
+      "description": "Something broke after the update.",
+      "expected_documents": [],
+      "best_distance": 0.3795928955078125,
+      "contrast": {
+        "2": 0.0021857619285583496,
+        "3": 0.011088311672210693,
+        "4": 0.01148831844329834,
+        "5": 0.013163566589355469
+      },
+      "top_documents": [
+        "password_reset_and_account_access.md",
+        "file_upload_failures.md",
+        "vpn_and_remote_access.md",
+        "http_502_bad_gateway.md",
+        "multipart_upload_and_storage.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-05",
+      "group": "vague",
+      "label": "fallback",
+      "description": "I can't do my work, nothing is working.",
+      "expected_documents": [],
+      "best_distance": 0.34907209873199463,
+      "contrast": {
+        "2": 0.002229154109954834,
+        "3": 0.019184112548828125,
+        "4": 0.02005547285079956,
+        "5": 0.02051830291748047
+      },
+      "top_documents": [
+        "network_connectivity_basics.md",
+        "database_connection_failures.md",
+        "http_502_bad_gateway.md",
+        "vpn_and_remote_access.md",
+        "ip_configuration_troubleshooting.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-06",
+      "group": "vague",
+      "label": "fallback",
+      "description": "Weird behavior on the website since this morning.",
+      "expected_documents": [],
+      "best_distance": 0.3939305543899536,
+      "contrast": {
+        "2": 0.0031644105911254883,
+        "3": 0.012159228324890137,
+        "4": 0.015167832374572754,
+        "5": 0.015593647956848145
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "authentication_failures.md",
+        "password_reset_and_account_access.md",
+        "http_504_gateway_timeout.md",
+        "database_timeouts_and_locks.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-07",
+      "group": "vague",
+      "label": "fallback",
+      "description": "My team has an access issue.",
+      "expected_documents": [],
+      "best_distance": 0.33203834295272827,
+      "contrast": {
+        "2": 0.008229851722717285,
+        "3": 0.016103804111480713,
+        "4": 0.018022775650024414,
+        "5": 0.03298860788345337
+      },
+      "top_documents": [
+        "password_reset_and_account_access.md",
+        "authentication_failures.md",
+        "vpn_and_remote_access.md",
+        "network_connectivity_basics.md",
+        "database_connection_failures.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-08",
+      "group": "vague",
+      "label": "fallback",
+      "description": "We have a problem with the server.",
+      "expected_documents": [],
+      "best_distance": 0.3310145139694214,
+      "contrast": {
+        "2": 0.012254476547241211,
+        "3": 0.024380087852478027,
+        "4": 0.027334988117218018,
+        "5": 0.03669726848602295
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "http_503_service_unavailable.md",
+        "database_connection_failures.md",
+        "http_504_gateway_timeout.md",
+        "file_upload_failures.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-09",
+      "group": "vague",
+      "label": "fallback",
+      "description": "I get an error when I try to use it.",
+      "expected_documents": [],
+      "best_distance": 0.4187554121017456,
+      "contrast": {
+        "2": 0.0015106797218322754,
+        "3": 0.0042694807052612305,
+        "4": 0.004321277141571045,
+        "5": 0.006601810455322266
+      },
+      "top_documents": [
+        "database_connection_failures.md",
+        "http_502_bad_gateway.md",
+        "authentication_failures.md",
+        "file_upload_failures.md",
+        "ip_configuration_troubleshooting.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    },
+    {
+      "ticket_id": "C-VAG-10",
+      "group": "vague",
+      "label": "fallback",
+      "description": "Could be the app, could be the connection. Please investigate urgently.",
+      "expected_documents": [],
+      "best_distance": 0.32787024974823,
+      "contrast": {
+        "2": 0.011400222778320312,
+        "3": 0.015546560287475586,
+        "4": 0.018046438694000244,
+        "5": 0.019924700260162354
+      },
+      "top_documents": [
+        "http_502_bad_gateway.md",
+        "database_connection_failures.md",
+        "network_connectivity_basics.md",
+        "http_504_gateway_timeout.md",
+        "vpn_and_remote_access.md"
+      ],
+      "top1_matches_expected": false,
+      "accepted": false
+    }
+  ]
+}
