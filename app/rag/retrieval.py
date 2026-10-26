@@ -35,6 +35,20 @@ def retrieve(
     """
     if not query or not query.strip():
         raise ValueError("query must be a non-empty string")
+    return retrieve_many([query], top_k=top_k, category=category, cfg=cfg)[0]
+
+
+def retrieve_many(
+    queries: list[str],
+    *,
+    top_k: int | None = None,
+    category: str | None = None,
+    cfg: Settings | None = None,
+) -> list[list[dict[str, Any]]]:
+    """Retrieve for several queries with batched query embeddings (same result shape as `retrieve`)."""
+    cleaned = [(query or "").strip() for query in queries]
+    if not cleaned or any(not query for query in cleaned):
+        raise ValueError("queries must be non-empty strings")
 
     cfg = cfg or settings
     top_k = top_k or cfg.retrieval_top_k
@@ -47,28 +61,40 @@ def retrieve(
             "ChromaDB collection is empty. Run `python -m app.rag.ingestion` first."
         )
 
-    query_embedding = embed_texts(
-        [query.strip()],
+    query_embeddings = embed_texts(
+        cleaned,
         task_type="RETRIEVAL_QUERY",
         client=client,
         cfg=cfg,
-    )[0]
+    )
 
     where = {"category": category} if category else None
 
     raw = collection.query(
-        query_embeddings=[query_embedding],
+        query_embeddings=query_embeddings,
         n_results=min(top_k, collection.count()),
         where=where,
         include=["documents", "metadatas", "distances"],
     )
 
-    results: list[dict[str, Any]] = []
-    documents = (raw.get("documents") or [[]])[0]
-    metadatas = (raw.get("metadatas") or [[]])[0]
-    distances = (raw.get("distances") or [[]])[0]
-    ids = (raw.get("ids") or [[]])[0]
+    return [
+        _format_query_results(
+            (raw.get("documents") or [])[index],
+            (raw.get("metadatas") or [])[index],
+            (raw.get("distances") or [])[index],
+            (raw.get("ids") or [])[index],
+        )
+        for index in range(len(cleaned))
+    ]
 
+
+def _format_query_results(
+    documents: list[str],
+    metadatas: list[dict[str, Any] | None],
+    distances: list[float],
+    ids: list[str],
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
     for doc, meta, distance, chunk_id in zip(documents, metadatas, distances, ids):
         meta = meta or {}
         distance_value = float(distance)
