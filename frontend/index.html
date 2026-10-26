@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Technical support console: classify tickets, retrieve documentation, and return grounded troubleshooting steps."
+    />
+    <title>Support Console</title>
+    <script>
+      // Apply the saved theme before first paint. Key must match THEME_STORAGE_KEY.
+      ;(function () {
+        var theme = 'light'
+        try {
+          var stored = localStorage.getItem('support-console-theme')
+          if (stored === 'dark') theme = 'dark'
+          if (stored === 'system' && matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark'
+        } catch (e) {}
+        document.documentElement.dataset.theme = theme
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
