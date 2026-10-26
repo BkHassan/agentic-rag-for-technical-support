@@ -11,8 +11,8 @@ answerable and out-of-corpus tickets name a system and symptom, so they do not
 (out-of-corpus tickets are a documentation gap, handled by the fallback).
 
 Outputs:
-    evaluation/results/clarification_check.json
-    evaluation/results/CLARIFICATION_CHECK.md
+    evals/results/clarification_check.json
+    evals/results/CLARIFICATION_CHECK.md
 """
 
 from __future__ import annotations
@@ -24,7 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from app.agent import classify_ticket, is_daily_quota_error
+from app.orchestration.coordinator import classify_ticket
+from app.orchestration.model import is_daily_quota_error
 from app.policies.clarification import decide_clarification
 from app.config import settings
 
