@@ -3,13 +3,13 @@ Reproducible evaluation of tool selection, answer grounding, and fallback.
 
 Usage (from project root, with GOOGLE_API_KEY and ingested Chroma docs):
 
-    python -m evals.run_evaluation
-    python -m evals.run_evaluation --limit 5
-    python -m evals.run_evaluation --ticket-id E-REL-001
+    python -m evaluation.run_evaluation
+    python -m evaluation.run_evaluation --limit 5
+    python -m evaluation.run_evaluation --ticket-id E-REL-001
 
 Outputs:
-    evals/results/latest.json
-    evals/results/latest.md
+    evaluation/results/latest.json
+    evaluation/results/latest.md
 """
 
 from __future__ import annotations
@@ -25,9 +25,9 @@ from typing import Any
 
 from app.agent import analyze_ticket_with_trace
 from app.config import settings
-from app.rag.ingestion import get_chroma_collection, ingest_documents
+from app.retrieval.ingestion import get_chroma_collection, ingest_documents
 from app.schemas import SupportTicket
-from evals.scoring import OUTCOMES, score_ticket
+from evaluation.scoring import OUTCOMES, score_ticket
 
 logger = logging.getLogger(__name__)
 
@@ -223,7 +223,7 @@ def _cost_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         f"- Model: `{report['model']}`",
         f"- Sufficiency rule: best distance <= {report['relevance_rule']['max_distance']} and "
         f"contrast@{report['relevance_rule']['contrast_rank']} >= "
-        f"{report['relevance_rule']['min_contrast']} (calibrated in `evals/results/CALIBRATION.md`)",
+        f"{report['relevance_rule']['min_contrast']} (calibrated in `evaluation/results/CALIBRATION.md`)",
         f"- Tickets scored: **{summary['tickets_passed']}/{summary['tickets_evaluated']}** "
         f"({summary['ticket_pass_rate']:.0%})",
         f"- API errors excluded from the scores: {summary['api_errors']}",

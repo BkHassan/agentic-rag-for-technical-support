@@ -241,8 +241,8 @@ def test_default_retriever_uses_the_existing_chroma_retrieval() -> None:
     client.models.generate_content.return_value = _response(_call("database connection timeout"))
     with (
         patch("app.agents.researcher.get_genai_client", side_effect=AssertionError("second client")),
-        patch("app.rag.retrieval.retrieve", return_value=[HIT]) as retrieve,
-        patch("app.rag.guardrails.validate_retrieval_evidence", side_effect=AssertionError("evidence gate")) as gate,
+        patch("app.retrieval.retrieval.retrieve", return_value=[HIT]) as retrieve,
+        patch("app.policies.evidence.validate_retrieval_evidence", side_effect=AssertionError("evidence gate")) as gate,
     ):
         result = research_ticket(CLEAR, _triage(), client=client, cfg=_settings())
 

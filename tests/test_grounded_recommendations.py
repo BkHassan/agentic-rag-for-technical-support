@@ -10,7 +10,7 @@ from app.agent import (
     generate_grounded_recommendations,
     handle_support_ticket,
 )
-from app.rag.guardrails import FALLBACK_MESSAGE, validate_retrieval_evidence
+from app.policies.evidence import FALLBACK_MESSAGE, validate_retrieval_evidence
 from app.schemas import GroundedAdvice, SupportTicket, TicketCategory, TicketClassification
 from tests.retrieval_fixtures import background_docs
 
@@ -141,9 +141,9 @@ def test_handle_support_ticket_orchestrates_classify_tools_and_grounding() -> No
     )
 
     with (
-        patch("app.agent.classify_ticket", return_value=classification),
+        patch("app.orchestration.coordinator.classify_ticket", return_value=classification),
         patch(
-            "app.agent.run_tool_calling_turn",
+            "app.orchestration.coordinator.run_tool_calling_turn",
             return_value={
                 "evidence": DB_EVIDENCE,
                 "tool_calls": [{"name": "search_technical_documentation"}],
@@ -152,7 +152,7 @@ def test_handle_support_ticket_orchestrates_classify_tools_and_grounding() -> No
             },
         ),
         patch(
-            "app.agent.collect_evidence_for_ticket",
+            "app.orchestration.coordinator.collect_evidence_for_ticket",
             return_value=(DB_EVIDENCE, True, "gemini_tool"),
         ),
     ):

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     relevance_candidate_pool: int = 15
 
     # Sufficiency rule (see app/rag/guardrails.py). Collection space is cosine:
-    # lower distance = closer. Re-run `python -m evals.calibrate_relevance` after
+    # lower distance = closer. Re-run `python -m evaluation.calibrate_relevance` after
     # changing the corpus, chunking, or embedding model; these values depend on all three.
     relevance_max_distance: float = 0.3687
     relevance_min_contrast: float = 0.0442

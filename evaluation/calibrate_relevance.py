@@ -3,8 +3,8 @@ Calibrate the retrieval sufficiency rule on labeled examples.
 
 Usage (from project root, with GOOGLE_API_KEY and an ingested Chroma index):
 
-    python -m evals.calibrate_relevance
-    python -m evals.calibrate_relevance --reuse-features   # refit without API calls
+    python -m evaluation.calibrate_relevance
+    python -m evaluation.calibrate_relevance --reuse-features   # refit without API calls
 
 Each labeled ticket is retrieved with its original text (as the API's gate does),
 then three rule families are fitted on the retrieval scores:
@@ -21,8 +21,8 @@ prefer the wider margin, then the simpler family. Because the family is selected
 with leave-one-out, the held-out 20-ticket evaluation is the unbiased check.
 
 Outputs:
-    evals/results/calibration.json
-    evals/results/CALIBRATION.md
+    evaluation/results/calibration.json
+    evaluation/results/CALIBRATION.md
 """
 
 from __future__ import annotations
@@ -39,8 +39,8 @@ from typing import Any
 import numpy as np
 
 from app.config import settings
-from app.rag.guardrails import relevance_features
-from app.rag.retrieval import retrieve_many
+from app.policies.evidence import relevance_features
+from app.retrieval.retrieval import retrieve_many
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +278,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "# Retrieval sufficiency calibration",
         "",
         f"- Generated at: `{report['generated_at']}`",
-        f"- Dataset: `evals/calibration_tickets.json` ({len(rows)} labeled tickets, separate from the 20-ticket evaluation)",
+        f"- Dataset: `evaluation/calibration_tickets.json` ({len(rows)} labeled tickets, separate from the 20-ticket evaluation)",
         f"- Embedding model: `{report['embedding_model']}`; collection chunks: {report['chunk_count']}",
         f"- Cost: unsafe answer = {UNSAFE_ANSWER_COST:g}, missed answer = {MISSED_ANSWER_COST:g}",
         "",
@@ -388,7 +388,7 @@ def main(argv: list[str] | None = None) -> int:
         if not settings.google_api_key:
             print("GOOGLE_API_KEY is required to embed calibration tickets.", file=sys.stderr)
             return 2
-        from app.rag.ingestion import get_chroma_collection
+        from app.retrieval.ingestion import get_chroma_collection
 
         chunk_count = get_chroma_collection().count()
         rows = extract_features(load_dataset())

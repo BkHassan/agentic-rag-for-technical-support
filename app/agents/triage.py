@@ -14,9 +14,9 @@ from google.genai import types
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from app.agents.state import ClarificationRecord
-from app.clarification import decide_clarification
+from app.policies.clarification import decide_clarification
 from app.config import Settings, settings
-from app.rag.ingestion import get_genai_client
+from app.retrieval.ingestion import get_genai_client
 from app.schemas import SupportTicket, TicketTriage
 
 logger = logging.getLogger(__name__)

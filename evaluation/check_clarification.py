@@ -3,7 +3,7 @@ Check the clarification decision on the labeled calibration tickets.
 
 Usage (from project root, with GOOGLE_API_KEY):
 
-    python -m evals.check_clarification
+    python -m evaluation.check_clarification
 
 Runs only the classification step (one Gemini call per ticket, no retrieval) and
 applies `decide_clarification`. Expected: the vague group asks for clarification;
@@ -11,8 +11,8 @@ answerable and out-of-corpus tickets name a system and symptom, so they do not
 (out-of-corpus tickets are a documentation gap, handled by the fallback).
 
 Outputs:
-    evals/results/clarification_check.json
-    evals/results/CLARIFICATION_CHECK.md
+    evaluation/results/clarification_check.json
+    evaluation/results/CLARIFICATION_CHECK.md
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from app.agent import classify_ticket, is_daily_quota_error
-from app.clarification import decide_clarification
+from app.policies.clarification import decide_clarification
 from app.config import settings
 
 logger = logging.getLogger(__name__)

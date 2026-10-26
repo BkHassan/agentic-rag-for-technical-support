@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from app.rag.retrieval import filter_by_relevance, retrieve
+from app.retrieval.retrieval import filter_by_relevance, retrieve
 
 REQUIRES_API_KEY = pytest.mark.skipif(
     not os.getenv("GOOGLE_API_KEY"),

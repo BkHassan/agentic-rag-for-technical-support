@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from app.agent import analyze_ticket_with_trace
-from app.clarification import (
+from app.policies.clarification import (
     CLARIFICATION_MESSAGE,
     QUESTION_AFFECTED_SYSTEM,
     QUESTION_OBSERVABLE_SYMPTOM,
@@ -138,9 +138,9 @@ def test_clarification_returns_questions_without_offering_search() -> None:
         completeness=_facts(None, "stopped working"),
     )
     with (
-        patch("app.agent.classify_ticket", return_value=triage),
-        patch("app.agent.run_tool_calling_turn") as tool_turn,
-        patch("app.agent.retrieve") as retrieve,
+        patch("app.orchestration.coordinator.classify_ticket", return_value=triage),
+        patch("app.orchestration.coordinator.run_tool_calling_turn") as tool_turn,
+        patch("app.orchestration.coordinator.retrieve") as retrieve,
     ):
         trace = analyze_ticket_with_trace(ticket, client=MagicMock())
 
@@ -167,9 +167,9 @@ def test_vague_ticket_with_detail_still_clarifies_when_no_document_stands_out() 
     # Close to many documents, none ahead of the rest.
     vague_matches = background_docs(start=0.30, step=0.005, count=5)
     with (
-        patch("app.agent.classify_ticket", return_value=triage),
-        patch("app.agent.run_tool_calling_turn") as tool_turn,
-        patch("app.agent.retrieve", return_value=vague_matches) as retrieve,
+        patch("app.orchestration.coordinator.classify_ticket", return_value=triage),
+        patch("app.orchestration.coordinator.run_tool_calling_turn") as tool_turn,
+        patch("app.orchestration.coordinator.retrieve", return_value=vague_matches) as retrieve,
     ):
         trace = analyze_ticket_with_trace(ticket, client=MagicMock())
 
@@ -188,12 +188,12 @@ def test_missed_symptom_is_overridden_when_ticket_matches_one_document() -> None
         completeness=_facts("internal hostnames", None),
     )
     with (
-        patch("app.agent.classify_ticket", return_value=triage),
+        patch("app.orchestration.coordinator.classify_ticket", return_value=triage),
         patch(
-            "app.agent.run_tool_calling_turn",
+            "app.orchestration.coordinator.run_tool_calling_turn",
             return_value={"used_knowledge_base": False, "tool_calls": []},
         ) as tool_turn,
-        patch("app.agent.retrieve", return_value=_strong_match()),
+        patch("app.orchestration.coordinator.retrieve", return_value=_strong_match()),
     ):
         trace = analyze_ticket_with_trace(ticket, client=MagicMock())
 
@@ -211,9 +211,9 @@ def test_ticket_that_only_names_a_system_is_not_overridden() -> None:
         completeness=_facts("VPN", None),
     )
     with (
-        patch("app.agent.classify_ticket", return_value=triage),
-        patch("app.agent.run_tool_calling_turn") as tool_turn,
-        patch("app.agent.retrieve", return_value=_strong_match()) as retrieve,
+        patch("app.orchestration.coordinator.classify_ticket", return_value=triage),
+        patch("app.orchestration.coordinator.run_tool_calling_turn") as tool_turn,
+        patch("app.orchestration.coordinator.retrieve", return_value=_strong_match()) as retrieve,
     ):
         trace = analyze_ticket_with_trace(ticket, client=MagicMock())
 
@@ -231,9 +231,9 @@ def test_non_troubleshooting_ticket_skips_the_tool_call() -> None:
         completeness=TicketCompleteness(is_troubleshooting_request=False),
     )
     with (
-        patch("app.agent.classify_ticket", return_value=triage),
-        patch("app.agent.run_tool_calling_turn") as tool_turn,
-        patch("app.agent.retrieve") as retrieve,
+        patch("app.orchestration.coordinator.classify_ticket", return_value=triage),
+        patch("app.orchestration.coordinator.run_tool_calling_turn") as tool_turn,
+        patch("app.orchestration.coordinator.retrieve") as retrieve,
     ):
         trace = analyze_ticket_with_trace(ticket, client=MagicMock())
 

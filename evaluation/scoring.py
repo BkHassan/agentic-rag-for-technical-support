@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.rag.guardrails import FALLBACK_MESSAGE
+from app.policies.evidence import FALLBACK_MESSAGE
 
 GROUNDED_ANSWER = "grounded_answer"
 CLARIFICATION_NEEDED = "clarification_needed"

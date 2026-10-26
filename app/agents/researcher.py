@@ -23,7 +23,7 @@ from app.agents.state import (
 )
 from app.agents.triage import TriageAssessment
 from app.config import Settings, settings
-from app.rag.ingestion import get_genai_client
+from app.retrieval.ingestion import get_genai_client
 from app.schemas import DocumentSource, SupportTicket, TicketTriage
 from app.tools.knowledge_base import SEARCH_TECHNICAL_DOCUMENTATION_NAME
 
@@ -257,7 +257,7 @@ def _validated_triage(
     if isinstance(triage, TriageAssessment):
         return triage.classification, triage.clarification.needed
     classification = TicketTriage.model_validate(triage.model_dump())
-    from app.clarification import decide_clarification
+    from app.policies.clarification import decide_clarification
 
     return classification, decide_clarification(description, classification.completeness).needed
 
@@ -303,7 +303,7 @@ def _complete_with_gemini(
 
 
 def _default_retriever(cfg: Settings) -> Retrieve:
-    from app.rag.retrieval import retrieve
+    from app.retrieval.retrieval import retrieve
 
     def retrieve_documents(query: str) -> list[dict[str, Any]]:
         return retrieve(query, top_k=cfg.retrieval_top_k, cfg=cfg)

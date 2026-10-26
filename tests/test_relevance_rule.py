@@ -6,9 +6,9 @@ from unittest.mock import patch
 
 from app.agent import collect_evidence_for_ticket
 from app.config import Settings
-from app.rag.guardrails import relevance_features, validate_retrieval_evidence
+from app.policies.evidence import relevance_features, validate_retrieval_evidence
 from app.schemas import SupportTicket
-from evals.calibrate_relevance import decide, fit, fit_family
+from evaluation.calibrate_relevance import decide, fit, fit_family
 from tests.retrieval_fixtures import background_docs
 
 CFG = Settings(
@@ -72,7 +72,7 @@ def test_out_of_corpus_ticket_falls_back_on_distance() -> None:
 def test_gate_scores_the_original_ticket_text() -> None:
     ticket = SupportTicket(ticket_id="T-1", description="Something is wrong with login.")
     tool_outcome = {"used_knowledge_base": True, "evidence": [_hit("authentication_failures", 0.2)]}
-    with patch("app.agent.retrieve", return_value=[]) as retrieve:
+    with patch("app.orchestration.coordinator.retrieve", return_value=[]) as retrieve:
         evidence, performed, source = collect_evidence_for_ticket(ticket, tool_outcome, cfg=CFG)
     retrieve.assert_called_once_with(
         "Something is wrong with login.", top_k=CFG.relevance_candidate_pool, cfg=CFG
@@ -86,7 +86,7 @@ def test_gate_reuses_hits_already_scored_for_the_ticket_text() -> None:
     ticket = SupportTicket(ticket_id="T-1", description="Something is wrong with login.")
     tool_outcome = {"used_knowledge_base": True}
     prior = [_hit("authentication_failures", 0.2)]
-    with patch("app.agent.retrieve") as retrieve:
+    with patch("app.orchestration.coordinator.retrieve") as retrieve:
         evidence, performed, source = collect_evidence_for_ticket(
             ticket, tool_outcome, cfg=CFG, prior_ticket_hits=prior
         )

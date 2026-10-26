@@ -53,8 +53,8 @@ def test_run_tool_calling_turn_executes_requested_tool_in_python() -> None:
     }
 
     with (
-        patch("app.agent.get_genai_client", return_value=fake_client),
-        patch("app.agent.execute_tool_call", return_value=tool_result) as exec_tool,
+        patch("app.orchestration.coordinator.get_genai_client", return_value=fake_client),
+        patch("app.orchestration.coordinator.execute_tool_call", return_value=tool_result) as exec_tool,
     ):
         outcome = run_tool_calling_turn(ticket, client=fake_client)
 
@@ -87,8 +87,8 @@ def test_finish_after_tool_does_not_spend_a_follow_up_call() -> None:
     tool_result = {"query": "HTTP 504", "result_count": 1, "relevant_count": 1, "results": []}
 
     with (
-        patch("app.agent.get_genai_client", return_value=fake_client),
-        patch("app.agent.execute_tool_call", return_value=tool_result),
+        patch("app.orchestration.coordinator.get_genai_client", return_value=fake_client),
+        patch("app.orchestration.coordinator.execute_tool_call", return_value=tool_result),
     ):
         outcome = run_tool_calling_turn(ticket, client=fake_client, finish_after_tool=True, max_tool_rounds=1)
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.rag.ingestion import (
+from app.retrieval.ingestion import (
     chunk_text,
     content_hash,
     infer_category,
