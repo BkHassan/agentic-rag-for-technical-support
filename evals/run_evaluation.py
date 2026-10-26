@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,7 +27,7 @@ from app.agent import analyze_ticket_with_trace
 from app.config import settings
 from app.rag.ingestion import get_chroma_collection, ingest_documents
 from app.schemas import SupportTicket
-from evals.scoring import score_ticket
+from evals.scoring import OUTCOMES, score_ticket
 
 logger = logging.getLogger(__name__)
 
@@ -54,39 +55,79 @@ def run_one(ticket_spec: dict[str, Any]) -> dict[str, Any]:
         ticket_id=ticket_spec["ticket_id"],
         description=ticket_spec["description"],
     )
-    trace = analyze_ticket_with_trace(ticket)
-    trace_row = {
-        "response": trace.response.model_dump(),
-        "classification_category": trace.classification_category,
-        "gemini_requested_retrieval": trace.gemini_requested_retrieval,
-        "retrieval_source": trace.retrieval_source,
-        "retrieval_performed": trace.retrieval_performed,
-        "evidence": trace.evidence,
-        "validation_sufficient": trace.validation_sufficient,
-        "validation_reason": trace.validation_reason,
-        "tool_calls": [
-            {
-                "name": call.get("name"),
-                "args": call.get("args"),
-                "result_count": call.get("result_count"),
-                "relevant_count": call.get("relevant_count"),
-                "error": call.get("error"),
-            }
-            for call in trace.tool_calls
-        ],
-        "latency_ms": trace.latency_ms,
-        "error": trace.error,
-    }
+    try:
+        trace = analyze_ticket_with_trace(ticket)
+        trace_row = {
+            "response": trace.response.model_dump(mode="json"),
+            "classification_category": trace.classification_category,
+            "gemini_requested_retrieval": trace.gemini_requested_retrieval,
+            "retrieval_source": trace.retrieval_source,
+            "retrieval_performed": trace.retrieval_performed,
+            "evidence": trace.evidence,
+            "validation_sufficient": trace.validation_sufficient,
+            "validation_reason": trace.validation_reason,
+            "tool_calls": [
+                {
+                    "name": call.get("name"),
+                    "args": call.get("args"),
+                    "result_count": call.get("result_count"),
+                    "relevant_count": call.get("relevant_count"),
+                    "error": call.get("error"),
+                }
+                for call in trace.tool_calls
+            ],
+            "latency_ms": trace.latency_ms,
+            "error": trace.error,
+            "clarification_missing": trace.clarification_missing,
+            "completeness": trace.completeness,
+            "clarification_overridden": trace.clarification_overridden,
+        }
+    except Exception as exc:  # noqa: BLE001 - keep one API failure from aborting the report
+        if _is_quota_error(str(exc)):
+            logger.error(
+                "Ticket %s not run: daily Gemini quota exhausted for %s. %s",
+                ticket.ticket_id,
+                settings.llm_model,
+                _retry_hint(str(exc)),
+            )
+        else:
+            logger.exception("Ticket %s failed before a scoreable result", ticket.ticket_id)
+        trace_row = {
+            "response": {},
+            "classification_category": None,
+            "gemini_requested_retrieval": False,
+            "retrieval_source": "error",
+            "retrieval_performed": False,
+            "evidence": [],
+            "validation_sufficient": False,
+            "validation_reason": str(exc),
+            "tool_calls": [],
+            "latency_ms": None,
+            "error": str(exc),
+        }
     scored = score_ticket(ticket_spec, trace_row)
     return {"ticket": ticket_spec, "trace": trace_row, "score": scored}
 
 
+def _retry_hint(message: str) -> str:
+    match = re.search(r"retry in ([0-9hms.]+)", message, re.IGNORECASE)
+    return f"Gemini says retry in {match.group(1)}." if match else "Retry after the daily reset."
+
+
+def _is_quota_error(message: str | None) -> bool:
+    """Stop the suite only for the daily cap. Per-minute limits are retried inside the agent."""
+    from app.agent import is_daily_quota_error
+
+    return is_daily_quota_error(message)
+
+
 def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    total = len(rows)
-    passed = sum(1 for row in rows if row["score"]["passed"])
+    scored_rows = [row for row in rows if not row["score"].get("errored")]
+    total = len(scored_rows)
+    passed = sum(1 for row in scored_rows if row["score"]["passed"])
 
     def metric_stats(name: str) -> dict[str, Any]:
-        items = [row["score"]["checks"][name] for row in rows]
+        items = [row["score"]["checks"][name] for row in scored_rows]
         applicable = [item for item in items if not item.get("skipped")]
         wins = sum(1 for item in applicable if item["passed"])
         return {
@@ -112,7 +153,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             },
             "error": row["score"].get("error"),
         }
-        for row in rows
+        for row in scored_rows
         if not row["score"]["passed"]
     ]
 
@@ -120,12 +161,25 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     api_errors = sum(1 for row in rows if row["trace"].get("error"))
 
     return {
+        "tickets_attempted": len(rows),
         "tickets_evaluated": total,
         "tickets_passed": passed,
         "ticket_pass_rate": (passed / total) if total else 0.0,
         "tool_selection": metric_stats("tool_selection"),
         "answer_grounding": metric_stats("answer_grounding"),
-        "fallback": metric_stats("fallback"),
+        "outcome": metric_stats("outcome"),
+        "outcome_matrix": {
+            expected: {
+                observed: sum(
+                    1
+                    for row in scored_rows
+                    if row["score"]["expected_outcome"] == expected
+                    and row["score"]["observed_outcome"] == observed
+                )
+                for observed in OUTCOMES
+            }
+            for expected in OUTCOMES
+        },
         "latency_ms": {
             "count": len(latencies),
             "avg": (sum(latencies) / len(latencies)) if latencies else None,
@@ -141,11 +195,19 @@ def render_markdown(report: dict[str, Any]) -> str:
     lines = [
         "# Evaluation results",
         "",
-        f"- Generated at: `{report['generated_at']}`",
+        f"- Generated at: `{report['generated_at']}`"
+        + (f" (re-scored from saved traces at `{report['rescored_at']}`)" if report.get("rescored_at") else ""),
         f"- Dataset: `{report['dataset']}`",
         f"- Model: `{report['model']}`",
-        f"- Tickets passed: **{summary['tickets_passed']}/{summary['tickets_evaluated']}** "
+        f"- Sufficiency rule: best distance <= {report['relevance_rule']['max_distance']} and "
+        f"contrast@{report['relevance_rule']['contrast_rank']} >= "
+        f"{report['relevance_rule']['min_contrast']} (calibrated in `evals/results/CALIBRATION.md`)",
+        f"- Tickets scored: **{summary['tickets_passed']}/{summary['tickets_evaluated']}** "
         f"({summary['ticket_pass_rate']:.0%})",
+        f"- API errors excluded from the scores: {summary['api_errors']}",
+        f"- Stopped early for daily quota: {report.get('stopped_for_quota', False)}",
+        "",
+        "These rates describe this fixed set only. They are not a production reliability claim.",
         "",
         "## Core behaviors",
         "",
@@ -155,12 +217,27 @@ def render_markdown(report: dict[str, Any]) -> str:
     for key, label in (
         ("tool_selection", "Tool selection"),
         ("answer_grounding", "Answer grounding"),
-        ("fallback", "Fallback behavior"),
+        ("outcome", "Fallback / clarification outcome"),
     ):
         stats = summary[key]
         rate = "n/a" if stats["rate"] is None else f"{stats['rate']:.0%}"
         lines.append(
             f"| {label} | {stats['passed']} | {stats['total']} | {rate} |"
+        )
+
+    matrix = summary["outcome_matrix"]
+    lines.extend(
+        [
+            "",
+            "## Outcomes (rows: expected, columns: returned)",
+            "",
+            "| Expected | " + " | ".join(OUTCOMES) + " |",
+            "|---|" + "---:|" * len(OUTCOMES),
+        ]
+    )
+    for expected in OUTCOMES:
+        lines.append(
+            f"| {expected} | " + " | ".join(str(matrix[expected][observed]) for observed in OUTCOMES) + " |"
         )
 
     latency = summary["latency_ms"]
@@ -195,13 +272,19 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
             "## Per-ticket results",
             "",
-            "| Ticket | Group | Pass | Tool | Grounding | Fallback | Latency ms |",
-            "|---|---|:---:|:---:|:---:|:---:|---:|",
+            "| Ticket | Group | Pass | Tool | Grounding | Outcome (expected -> returned) | Latency ms |",
+            "|---|---|:---:|:---:|:---:|---|---:|",
         ]
     )
     for row in report["results"]:
         score = row["score"]
         checks = score["checks"]
+        if score.get("errored"):
+            lines.append(
+                f"| {score['ticket_id']} | {score['group']} | error | n/a | n/a | "
+                f"not scored (API error) | n/a |"
+            )
+            continue
         grounding = "skip" if checks["answer_grounding"].get("skipped") else (
             "pass" if checks["answer_grounding"]["passed"] else "fail"
         )
@@ -212,7 +295,11 @@ def render_markdown(report: dict[str, Any]) -> str:
                 ok="pass" if score["passed"] else "fail",
                 tool="pass" if checks["tool_selection"]["passed"] else "fail",
                 ground=grounding,
-                fb="pass" if checks["fallback"]["passed"] else "fail",
+                fb="{mark} {expected} -> {observed}".format(
+                    mark="pass" if checks["outcome"]["passed"] else "fail",
+                    expected=score.get("expected_outcome"),
+                    observed=score.get("observed_outcome") or "error",
+                ),
                 lat=score.get("latency_ms") or 0.0,
             )
         )
@@ -227,12 +314,61 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--ticket-id", action="append", default=None)
     parser.add_argument("--force-reingest", action="store_true")
     parser.add_argument("--skip-ingest-check", action="store_true")
+    parser.add_argument(
+        "--rescore",
+        action="store_true",
+        help="Re-score the traces saved in results/latest.json without calling Gemini",
+    )
     return parser.parse_args(argv)
+
+
+def output_paths(dataset_path: Path) -> tuple[Path, Path, Path]:
+    """(latest json, latest markdown, full-suite snapshot) for a dataset."""
+    if dataset_path.resolve() == DATASET_PATH.resolve():
+        return RESULTS_DIR / "latest.json", RESULTS_DIR / "latest.md", RESULTS_DIR / "RESULTS.md"
+    stem = dataset_path.stem
+    return (
+        RESULTS_DIR / f"latest_{stem}.json",
+        RESULTS_DIR / f"latest_{stem}.md",
+        RESULTS_DIR / f"{stem.upper()}_RESULTS.md",
+    )
+
+
+def write_report(report: dict[str, Any], *, dataset_path: Path, full_suite: bool) -> None:
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    json_path, md_path, snapshot_path = output_paths(dataset_path)
+    json_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    md_path.write_text(render_markdown(report), encoding="utf-8")
+
+    # Stable copy for the repo's documented results snapshot when full suite runs.
+    if full_suite:
+        snapshot_path.write_text(render_markdown(report), encoding="utf-8")
+
+    print(render_markdown(report))
+    print(f"Wrote {json_path}")
+    print(f"Wrote {md_path}")
+
+
+def rescore(dataset_path: Path) -> int:
+    """Score saved traces against the current dataset and scorer; no API calls."""
+    report = json.loads(output_paths(dataset_path)[0].read_text(encoding="utf-8"))
+    specs = {ticket["ticket_id"]: ticket for ticket in load_dataset(dataset_path)["tickets"]}
+    rows = []
+    for row in report["results"]:
+        spec = specs[row["ticket"]["ticket_id"]]
+        rows.append({"ticket": spec, "trace": row["trace"], "score": score_ticket(spec, row["trace"])})
+    report["results"] = rows
+    report["summary"] = summarize(rows)
+    report["rescored_at"] = datetime.now(timezone.utc).isoformat()
+    write_report(report, dataset_path=dataset_path, full_suite=len(rows) == len(specs))
+    return 0 if report["summary"]["ticket_pass_rate"] == 1.0 else 1
 
 
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = parse_args(argv)
+    if args.rescore:
+        return rescore(args.dataset)
 
     if not settings.google_api_key:
         print(
@@ -263,34 +399,38 @@ def main(argv: list[str] | None = None) -> int:
         logger.info("Index status: %s", index_info)
 
     rows: list[dict[str, Any]] = []
+    stopped_for_quota = False
     for ticket in tickets:
         logger.info("Evaluating %s", ticket["ticket_id"])
-        rows.append(run_one(ticket))
+        row = run_one(ticket)
+        rows.append(row)
+        if _is_quota_error(row["score"].get("error")):
+            stopped_for_quota = True
+            logger.error("Stopping evaluation: Gemini quota or rate limit reached")
+            break
 
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "dataset": str(args.dataset.relative_to(PROJECT_ROOT)).replace("\\", "/"),
+        "dataset": str(args.dataset.resolve().relative_to(PROJECT_ROOT)).replace("\\", "/"),
         "model": settings.llm_model,
         "embedding_model": settings.embedding_model,
-        "relevance_max_distance": settings.relevance_max_distance,
+        "relevance_rule": {
+            "max_distance": settings.relevance_max_distance,
+            "min_contrast": settings.relevance_min_contrast,
+            "contrast_rank": settings.relevance_contrast_rank,
+            "scored_on": "original ticket text",
+        },
         "index": index_info,
+        "stopped_for_quota": stopped_for_quota,
         "summary": summarize(rows),
         "results": rows,
     }
 
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    json_path = RESULTS_DIR / "latest.json"
-    md_path = RESULTS_DIR / "latest.md"
-    json_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    md_path.write_text(render_markdown(report), encoding="utf-8")
-
-    # Stable copy for the repo's documented results snapshot when full suite runs.
-    if args.limit is None and not args.ticket_id:
-        (RESULTS_DIR / "RESULTS.md").write_text(render_markdown(report), encoding="utf-8")
-
-    print(render_markdown(report))
-    print(f"Wrote {json_path}")
-    print(f"Wrote {md_path}")
+    write_report(
+        report,
+        dataset_path=args.dataset,
+        full_suite=args.limit is None and not args.ticket_id and not stopped_for_quota,
+    )
     return 0 if report["summary"]["ticket_pass_rate"] == 1.0 else 1
 
 

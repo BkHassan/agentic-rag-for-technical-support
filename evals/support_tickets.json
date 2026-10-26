@@ -1,6 +1,17 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "description": "Fixed evaluation set for the agentic technical support MVP. Expected outcomes are frozen against this corpus and must not be changed to match agent answers.",
+  "outcome_policy": {
+    "grounded_answer": "A troubleshooting ticket that describes an observable symptom, and the corpus documents the problem.",
+    "clarification_needed": "A troubleshooting ticket that does not describe an observable symptom (error text, code, or a concrete behavior). Generic wording such as 'broken', 'not working', 'an issue', 'errors', or 'something is wrong' does not count, nor does a phrase that only repeats the system name. A missing system name alone does not require clarification when the symptom is specific (e.g. 'returns 503'), but it is asked about alongside a missing symptom. The missing information belongs to the reporter, so the agent asks before searching.",
+    "fallback": "A specific ticket the corpus does not cover (asking the reporter more cannot fill a documentation gap), or a message that is not a troubleshooting request."
+  },
+  "changelog": [
+    {
+      "version": "1.1",
+      "change": "Split the old fallback expectation into clarification_needed and fallback. E-AMB-001..003 now expect clarification_needed with retrieval_appropriate=false, because search should wait until the reporter describes a symptom. All other expectations keep their 1.0 meaning (fallback_expected=false -> grounded_answer, true -> fallback). Decided from outcome_policy before the agent was changed or run."
+    }
+  ],
   "corpus_documents": [
     "authentication_failures.md",
     "database_connection_failures.md",
@@ -29,7 +40,12 @@
     "tickets_with_insufficient_or_irrelevant_evidence": 5,
     "ambiguous_or_underspecified_tickets": 3,
     "tickets_that_should_not_require_retrieval": 2,
-    "total": 20
+    "total": 20,
+    "expected_outcomes": {
+      "grounded_answer": 10,
+      "clarification_needed": 3,
+      "fallback": 7
+    }
   },
   "tickets": [
     {
@@ -42,7 +58,7 @@
         "database_connection_failures.md",
         "database_timeouts_and_locks.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "Clear DB timeout symptoms; corpus has connection and lock/timeout guidance."
     },
     {
@@ -54,7 +70,7 @@
       "expected_supporting_documents": [
         "http_504_gateway_timeout.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "504 is explicitly documented."
     },
     {
@@ -67,7 +83,7 @@
         "password_reset_and_account_access.md",
         "authentication_failures.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "Post-reset login failure is covered by password-reset and auth docs."
     },
     {
@@ -80,7 +96,7 @@
         "dns_resolution_failures.md",
         "network_connectivity_basics.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "Classic DNS failure pattern."
     },
     {
@@ -92,7 +108,7 @@
       "expected_supporting_documents": [
         "file_upload_failures.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "413 / size-limit upload failures are documented."
     },
     {
@@ -104,7 +120,7 @@
       "expected_supporting_documents": [
         "database_connection_failures.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "Connection pool / max connections covered in DB connection doc."
     },
     {
@@ -117,7 +133,7 @@
         "session_tokens_and_sso.md",
         "authentication_failures.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "SSO callback vs local session issues are documented."
     },
     {
@@ -130,7 +146,7 @@
         "vpn_and_remote_access.md",
         "dns_resolution_failures.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "VPN connected but routes/DNS broken is covered."
     },
     {
@@ -143,7 +159,7 @@
         "ip_configuration_troubleshooting.md",
         "network_connectivity_basics.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "DHCP / IP configuration failures are documented."
     },
     {
@@ -156,7 +172,7 @@
         "http_502_bad_gateway.md",
         "http_503_service_unavailable.md"
       ],
-      "fallback_expected": false,
+      "expected_outcome": "grounded_answer",
       "notes": "502 after deploy / readiness issues are documented; 503 may also be related."
     },
     {
@@ -166,7 +182,7 @@
       "expected_category": "application",
       "retrieval_appropriate": true,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
+      "expected_outcome": "fallback",
       "notes": "No Kubernetes/GKE documentation in the corpus; retrieval should not yield reliable evidence."
     },
     {
@@ -176,7 +192,7 @@
       "expected_category": "other",
       "retrieval_appropriate": true,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
+      "expected_outcome": "fallback",
       "notes": "Salesforce API limits are outside the technical docs corpus."
     },
     {
@@ -186,7 +202,7 @@
       "expected_category": "other",
       "retrieval_appropriate": true,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
+      "expected_outcome": "fallback",
       "notes": "Printer/spooler issues are not covered by the knowledge base."
     },
     {
@@ -196,7 +212,7 @@
       "expected_category": "other",
       "retrieval_appropriate": true,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
+      "expected_outcome": "fallback",
       "notes": "Infrastructure-as-code tooling is outside the current docs."
     },
     {
@@ -206,7 +222,7 @@
       "expected_category": "application",
       "retrieval_appropriate": true,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
+      "expected_outcome": "fallback",
       "notes": "Kafka streaming ops are not in the corpus; expect weak/irrelevant retrieval and fallback."
     },
     {
@@ -214,30 +230,33 @@
       "group": "ambiguous_or_underspecified",
       "description": "The application is broken for some users.",
       "expected_category": "other",
-      "retrieval_appropriate": true,
+      "retrieval_appropriate": false,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
-      "notes": "No symptoms, errors, or subsystem named; insufficient to ground recommendations."
+      "expected_outcome": "clarification_needed",
+      "missing_information": ["affected_system", "observable_symptom"],
+      "notes": "'The application' and 'broken' name no specific system or failure. The reporter can supply both; the corpus is not the gap."
     },
     {
       "ticket_id": "E-AMB-002",
       "group": "ambiguous_or_underspecified",
       "description": "Something is wrong with login or maybe the network. Please fix ASAP.",
       "expected_category": "other",
-      "retrieval_appropriate": true,
+      "retrieval_appropriate": false,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
-      "notes": "Conflicting domains with no concrete evidence; fallback expected."
+      "expected_outcome": "clarification_needed",
+      "missing_information": ["observable_symptom"],
+      "notes": "Names candidate areas (login, network) but no observable failure; 'something is wrong' does not say what fails. Ask before choosing between auth and network docs."
     },
     {
       "ticket_id": "E-AMB-003",
       "group": "ambiguous_or_underspecified",
       "description": "It stopped working after yesterday.",
       "expected_category": "other",
-      "retrieval_appropriate": true,
+      "retrieval_appropriate": false,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
-      "notes": "Underspecified; no product area or error details."
+      "expected_outcome": "clarification_needed",
+      "missing_information": ["affected_system", "observable_symptom"],
+      "notes": "'It' and 'stopped working' name no system or failure. Only the reporter can fill the gap."
     },
     {
       "ticket_id": "E-NRT-001",
@@ -246,7 +265,7 @@
       "expected_category": "other",
       "retrieval_appropriate": false,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
+      "expected_outcome": "fallback",
       "notes": "Operational/access request, not a technical troubleshooting ticket; retrieval should not be used to invent steps."
     },
     {
@@ -256,7 +275,7 @@
       "expected_category": "other",
       "retrieval_appropriate": false,
       "expected_supporting_documents": [],
-      "fallback_expected": true,
+      "expected_outcome": "fallback",
       "notes": "Acknowledgement / closure message; documentation search is not appropriate."
     }
   ]
