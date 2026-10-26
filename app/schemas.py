@@ -37,6 +37,47 @@ class SupportTicket(BaseModel):
         return value.strip()
 
 
+class AgentOutcome(str, Enum):
+    """What the agent did with the ticket."""
+
+    GROUNDED_ANSWER = "grounded_answer"
+    CLARIFICATION_NEEDED = "clarification_needed"
+    FALLBACK = "fallback"
+
+
+class TicketCompleteness(BaseModel):
+    """Facts Gemini extracts from the ticket; the application decides whether to ask for more."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    is_troubleshooting_request: bool = Field(
+        ...,
+        description=(
+            "True when the reporter says something is failing or not behaving as expected, "
+            "even vaguely. False only for thanks, staffing, requests to be granted access "
+            "or permissions, or announcements."
+        ),
+    )
+    affected_system: str | None = Field(
+        default=None,
+        description=(
+            "Exact phrase copied from the ticket naming the specific system, feature, or "
+            "technology that fails (e.g. 'checkout page', 'VPN', 'Postgres', 'SSO login'). "
+            "Null when the ticket only says 'it', 'the system', 'the application', or similar."
+        ),
+    )
+    observable_symptom: str | None = Field(
+        default=None,
+        description=(
+            "Exact clause copied from the ticket saying what happens: an error message or code, "
+            "or a concrete behavior even without an error (e.g. 'returns 504', 'never receives "
+            "the email', 'is missing from the menu'). Null only when the ticket says nothing "
+            "more specific than 'broken', 'not working', 'something is wrong', 'errors', "
+            "'an issue', or 'slow'."
+        ),
+    )
+
+
 class TicketClassification(BaseModel):
     """Result of classifying a support ticket (independent of retrieval)."""
 
@@ -48,6 +89,16 @@ class TicketClassification(BaseModel):
         min_length=1,
         description="Brief explanation of why this category was chosen",
     )
+    completeness: TicketCompleteness | None = Field(
+        default=None,
+        description="Ticket completeness facts; None when not assessed",
+    )
+
+
+class TicketTriage(TicketClassification):
+    """Response schema for the classification call; completeness is required here."""
+
+    completeness: TicketCompleteness
 
 
 class DocumentSource(BaseModel):
@@ -105,6 +156,18 @@ class AgentResponse(BaseModel):
         ...,
         description="Classified ticket category",
     )
+    outcome: AgentOutcome = Field(
+        ...,
+        description=(
+            "grounded_answer: documented recommendations; clarification_needed: the ticket "
+            "lacks a system or symptom, see clarifying_questions; fallback: no supporting "
+            "documentation, review manually"
+        ),
+    )
+    clarifying_questions: list[str] = Field(
+        default_factory=list,
+        description="Questions for the reporter when outcome is clarification_needed",
+    )
     recommendations: list[str] = Field(
         default_factory=list,
         description="Ordered troubleshooting recommendations",
@@ -119,7 +182,10 @@ class AgentResponse(BaseModel):
     )
     fallback_triggered: bool = Field(
         ...,
-        description="True when the safe fallback path was used due to weak or missing evidence",
+        description=(
+            "True when the documentation fallback was used due to weak or missing evidence "
+            "(false for clarification_needed)"
+        ),
     )
     summary: str | None = Field(
         default=None,
