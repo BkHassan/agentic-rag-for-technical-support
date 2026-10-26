@@ -176,6 +176,10 @@ def embed_texts(
 
     for start in range(0, len(texts), batch_size):
         batch = texts[start : start + batch_size]
+        # Count the request only when a ticket analysis is in progress.
+        from app.usage import note_embed_api_call
+
+        note_embed_api_call()
         result = client.models.embed_content(
             model=cfg.embedding_model,
             contents=batch,

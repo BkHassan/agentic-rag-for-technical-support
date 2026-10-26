@@ -14,13 +14,15 @@ interface FieldErrors {
 
 interface TicketFormProps {
   onSubmit: (ticket: SupportTicket) => void
+  /** Called by "Clear" so a result or error for the cleared text does not stay on screen. */
+  onClear?: () => void
   /** While true the form keeps its values but cannot be edited or submitted again. */
   submitting?: boolean
   /** Focus the description on mount, e.g. after "Analyze another ticket". */
   autoFocusDescription?: boolean
 }
 
-export function TicketForm({ onSubmit, submitting = false, autoFocusDescription = false }: TicketFormProps) {
+export function TicketForm({ onSubmit, onClear, submitting = false, autoFocusDescription = false }: TicketFormProps) {
   const [ticketId, setTicketId] = useState(() => generateTicketId())
   const [description, setDescription] = useState('')
   const [exampleId, setExampleId] = useState('')
@@ -54,6 +56,7 @@ export function TicketForm({ onSubmit, submitting = false, autoFocusDescription 
     setExampleId('')
     setSavedDraft(null)
     setErrors({})
+    onClear?.()
     descriptionRef.current?.focus()
   }
 

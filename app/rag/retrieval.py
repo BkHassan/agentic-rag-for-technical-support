@@ -6,10 +6,56 @@ can apply a relevance threshold before generating recommendations.
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from typing import Any
 
 from app.config import Settings, settings
 from app.rag.ingestion import embed_texts, get_chroma_collection, get_genai_client
+from app.usage import note_embed_cache_hit
+
+# Identical ticket text is embedded again by the specificity check and the
+# sufficiency check. Keep the vectors for the life of the process.
+_QUERY_EMBED_CACHE: OrderedDict[tuple[str, int, str], list[float]] = OrderedDict()
+QUERY_EMBED_CACHE_SIZE = 128
+
+
+def clear_query_embed_cache() -> None:
+    _QUERY_EMBED_CACHE.clear()
+
+
+def embed_queries(
+    texts: list[str],
+    *,
+    client: Any,
+    cfg: Settings | None = None,
+) -> list[list[float]]:
+    """RETRIEVAL_QUERY embeddings, reusing vectors for text already embedded."""
+    cfg = cfg or settings
+    ordered: list[list[float] | None] = [None] * len(texts)
+    missing_texts: list[str] = []
+    missing_at: list[int] = []
+    for index, text in enumerate(texts):
+        key = (cfg.embedding_model, cfg.embedding_dimensionality, text)
+        cached = _QUERY_EMBED_CACHE.get(key)
+        if cached is None:
+            missing_texts.append(text)
+            missing_at.append(index)
+            continue
+        _QUERY_EMBED_CACHE.move_to_end(key)
+        ordered[index] = cached
+        note_embed_cache_hit()
+
+    if missing_texts:
+        fresh = embed_texts(missing_texts, task_type="RETRIEVAL_QUERY", client=client, cfg=cfg)
+        for index, vector in zip(missing_at, fresh, strict=True):
+            key = (cfg.embedding_model, cfg.embedding_dimensionality, texts[index])
+            _QUERY_EMBED_CACHE[key] = vector
+            _QUERY_EMBED_CACHE.move_to_end(key)
+            while len(_QUERY_EMBED_CACHE) > QUERY_EMBED_CACHE_SIZE:
+                _QUERY_EMBED_CACHE.popitem(last=False)
+            ordered[index] = vector
+
+    return [vector for vector in ordered if vector is not None]
 
 
 def retrieve(

@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from google import genai
@@ -33,6 +33,7 @@ from app.schemas import (
     TicketClassification,
     TicketTriage,
 )
+from app.usage import current_usage, note_gemini_call, reset_usage, start_usage
 from app.tools.knowledge_base import (
     SEARCH_TECHNICAL_DOCUMENTATION_NAME,
     execute_tool_call,
@@ -165,6 +166,7 @@ def _generate_content_with_retry(
     """Call Gemini with retries for transient overload and per-minute rate limits."""
     last_exc: Exception | None = None
     for attempt in range(1, max_attempts + 1):
+        note_gemini_call()
         try:
             return client.models.generate_content(
                 model=model,
@@ -284,6 +286,7 @@ def run_tool_calling_turn(
     *,
     ticket_id: str = "adhoc",
     max_tool_rounds: int = 3,
+    finish_after_tool: bool = False,
     client: genai.Client | None = None,
     cfg: Settings | None = None,
 ) -> dict[str, Any]:
@@ -291,6 +294,8 @@ def run_tool_calling_turn(
     Agentic workflow with explicit (manual) function calling.
 
     Gemini proposes tool calls; this application executes them and returns results.
+    finish_after_tool stops once the search has run. The host writes the answer
+    from its own evidence check, so a follow-up model call would be unused.
     """
     cfg = cfg or settings
     ticket_model = _as_ticket(ticket, ticket_id=ticket_id)
@@ -378,6 +383,8 @@ def run_tool_calling_turn(
             )
 
         contents.append(types.Content(role="user", parts=response_parts))
+        if finish_after_tool:
+            break
     else:
         response = _generate_content_with_retry(
             client,
@@ -609,6 +616,7 @@ def collect_evidence_for_ticket(
     ticket: SupportTicket,
     tool_outcome: dict[str, Any],
     *,
+    prior_ticket_hits: list[dict[str, Any]] | None = None,
     cfg: Settings | None = None,
 ) -> tuple[list[dict[str, Any]], bool, str]:
     """
@@ -621,12 +629,14 @@ def collect_evidence_for_ticket(
     When Gemini did search, the host re-retrieves with the original ticket text and
     judges sufficiency on those scores. Gemini's rewritten query can add domain
     words a vague ticket never contained, and the calibrated thresholds were fitted
-    on ticket text.
+    on ticket text. Hits already retrieved for that same text are reused.
     """
     cfg = cfg or settings
     gemini_requested = bool(tool_outcome.get("used_knowledge_base"))
 
     if gemini_requested:
+        if prior_ticket_hits is not None:
+            return prior_ticket_hits, True, "gemini_tool"
         evidence = retrieve(ticket.description, top_k=cfg.relevance_candidate_pool, cfg=cfg)
         return evidence, True, "gemini_tool"
 
@@ -656,6 +666,29 @@ class TicketAnalysisTrace:
     clarification_missing: list[str] | None = None
     completeness: dict[str, Any] | None = None
     clarification_overridden: bool = False
+    gemini_calls: int = 0
+    embed_api_calls: int = 0
+    embed_cache_hits: int = 0
+    stage_ms: dict[str, float] = field(default_factory=dict)
+
+
+def _stamp_cost(trace: TicketAnalysisTrace, stage_ms: dict[str, float]) -> TicketAnalysisTrace:
+    usage = current_usage()
+    if usage is not None:
+        trace.gemini_calls = usage.gemini_calls
+        trace.embed_api_calls = usage.embed_api_calls
+        trace.embed_cache_hits = usage.embed_cache_hits
+    trace.stage_ms = stage_ms
+    logger.info(
+        "Cost ticket_id=%s outcome=%s gemini_calls=%s embed_api_calls=%s embed_cache_hits=%s stage_ms=%s",
+        trace.response.ticket_id,
+        trace.response.outcome.value,
+        trace.gemini_calls,
+        trace.embed_api_calls,
+        trace.embed_cache_hits,
+        stage_ms,
+    )
+    return trace
 
 
 def check_ticket_specificity(
@@ -688,22 +721,25 @@ def analyze_ticket_with_trace(
     cfg = cfg or settings
     started = time.perf_counter()
     ticket_model = _as_ticket(ticket, ticket_id=ticket_id)
-
+    stage_ms: dict[str, float] = {}
+    usage_token = start_usage()
     try:
         client = client or get_genai_client(cfg.google_api_key)
+        stage_started = time.perf_counter()
         classification = classify_ticket(ticket_model, client=client, cfg=cfg)
+        stage_ms["classify"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
         completeness = (
             classification.completeness.model_dump() if classification.completeness else None
         )
         decision = decide_clarification(ticket_model.description, classification.completeness)
         clarification_overridden = False
+        candidates: list[dict[str, Any]] = []
         if decision.needed:
-            # A ticket that only names a system ("The VPN is acting weird") can match one
-            # document strongly without describing any symptom, so it is not re-checked.
-            candidates: list[dict[str, Any]] = []
             specificity: EvidenceValidationResult | None = None
             if decision.unexplained_detail:
+                stage_started = time.perf_counter()
                 candidates, specificity = check_ticket_specificity(ticket_model, cfg=cfg)
+                stage_ms["specificity"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
             if specificity is not None and specificity.sufficient_evidence:
                 clarification_overridden = True
                 logger.info(
@@ -719,7 +755,7 @@ def analyze_ticket_with_trace(
                     ticket_model.ticket_id,
                     decision.missing,
                 )
-                return TicketAnalysisTrace(
+                clarified = TicketAnalysisTrace(
                     response=build_clarification_response(
                         ticket_model, category=classification.category, decision=decision
                     ),
@@ -740,18 +776,45 @@ def analyze_ticket_with_trace(
                     clarification_missing=list(decision.missing),
                     completeness=completeness,
                 )
+                return _stamp_cost(clarified, stage_ms)
 
-        tool_outcome = run_tool_calling_turn(ticket_model, client=client, cfg=cfg)
+        stage_started = time.perf_counter()
+        if (
+            classification.completeness is not None
+            and not classification.completeness.is_troubleshooting_request
+        ):
+            tool_outcome = {
+                "used_knowledge_base": False,
+                "tool_calls": [],
+                "response_text": "",
+            }
+            logger.info(
+                "Skipped tool call for ticket_id=%s: not a troubleshooting request",
+                ticket_model.ticket_id,
+            )
+        else:
+            tool_outcome = run_tool_calling_turn(
+                ticket_model,
+                client=client,
+                cfg=cfg,
+                max_tool_rounds=1,
+                finish_after_tool=True,
+            )
+        stage_ms["tool"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
+        stage_started = time.perf_counter()
         evidence, retrieval_performed, retrieval_source = collect_evidence_for_ticket(
             ticket_model,
             tool_outcome,
             cfg=cfg,
+            prior_ticket_hits=candidates if candidates else None,
         )
+        stage_ms["evidence"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
         validation = validate_retrieval_evidence(
             evidence,
             retrieval_performed=retrieval_performed,
             cfg=cfg,
         )
+        stage_started = time.perf_counter()
         response = generate_grounded_recommendations(
             ticket_model,
             category=classification.category,
@@ -761,7 +824,8 @@ def analyze_ticket_with_trace(
             cfg=cfg,
             validation=validation,
         )
-        return TicketAnalysisTrace(
+        stage_ms["answer"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
+        answered = TicketAnalysisTrace(
             response=response,
             classification_category=classification.category.value,
             gemini_requested_retrieval=bool(tool_outcome.get("used_knowledge_base")),
@@ -776,6 +840,7 @@ def analyze_ticket_with_trace(
             completeness=completeness,
             clarification_overridden=clarification_overridden,
         )
+        return _stamp_cost(answered, stage_ms)
     except ValueError:
         # Config / input problems (e.g. missing GOOGLE_API_KEY) should surface to the API.
         raise
@@ -784,7 +849,6 @@ def analyze_ticket_with_trace(
         raise
     except Exception as exc:  # noqa: BLE001 - capture for eval reporting
         logger.exception("analyze_ticket_with_trace failed for %s", ticket_model.ticket_id)
-        # Minimal failed response so callers can still score the row.
         failed = AgentResponse(
             ticket_id=ticket_model.ticket_id,
             category=TicketCategory.OTHER,
@@ -795,7 +859,7 @@ def analyze_ticket_with_trace(
             fallback_triggered=True,
             summary=FALLBACK_MESSAGE,
         )
-        return TicketAnalysisTrace(
+        failed_trace = TicketAnalysisTrace(
             response=failed,
             classification_category=TicketCategory.OTHER.value,
             gemini_requested_retrieval=False,
@@ -808,6 +872,9 @@ def analyze_ticket_with_trace(
             latency_ms=(time.perf_counter() - started) * 1000.0,
             error=str(exc),
         )
+        return _stamp_cost(failed_trace, stage_ms)
+    finally:
+        reset_usage(usage_token)
 
 
 def handle_support_ticket(
@@ -822,8 +889,11 @@ def handle_support_ticket(
     1) classify and extract completeness facts
     2) if no observable symptom was extracted and the ticket text does not match one
        document strongly, ask for clarification (Gemini is not offered search)
-    3) let Gemini request documentation search (app executes the tool)
-    4) validate evidence deterministically (before final LLM recommendations)
+    3) let Gemini request documentation search once (app executes the tool).
+       Thanks, staffing, and announcements skip this call. No follow-up model
+       call is made from the tool result; the host writes the answer.
+    4) validate evidence deterministically (before final LLM recommendations),
+       reusing a ticket-text search already done for the clarification check
     5) generate grounded recommendations or return the documentation fallback
     """
     trace = analyze_ticket_with_trace(
@@ -835,6 +905,7 @@ def handle_support_ticket(
     if trace.error:
         raise RuntimeError(trace.error)
     return trace.response
+
 
 
 def main() -> None:

@@ -28,6 +28,7 @@ export function AnalyzePage() {
             key={formKey}
             autoFocusDescription={formKey > 0}
             onSubmit={(ticket) => void submit(ticket)}
+            onClear={reset}
             submitting={state.status === 'loading'}
           />
         </div>

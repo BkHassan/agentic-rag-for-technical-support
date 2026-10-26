@@ -221,3 +221,25 @@ def test_ticket_that_only_names_a_system_is_not_overridden() -> None:
     tool_turn.assert_not_called()
     assert trace.response.outcome == AgentOutcome.CLARIFICATION_NEEDED
     assert trace.clarification_missing == ["observable_symptom"]
+
+
+def test_non_troubleshooting_ticket_skips_the_tool_call() -> None:
+    ticket = SupportTicket(ticket_id="E-NRT", description="Thanks, that fixed it.")
+    triage = TicketTriage(
+        category=TicketCategory.OTHER,
+        rationale="Acknowledgement, not a failure.",
+        completeness=TicketCompleteness(is_troubleshooting_request=False),
+    )
+    with (
+        patch("app.agent.classify_ticket", return_value=triage),
+        patch("app.agent.run_tool_calling_turn") as tool_turn,
+        patch("app.agent.retrieve") as retrieve,
+    ):
+        trace = analyze_ticket_with_trace(ticket, client=MagicMock())
+
+    tool_turn.assert_not_called()
+    retrieve.assert_not_called()
+    assert trace.response.outcome == AgentOutcome.FALLBACK
+    assert trace.gemini_requested_retrieval is False
+    assert trace.stage_ms["classify"] >= 0
+    assert "tool" in trace.stage_ms

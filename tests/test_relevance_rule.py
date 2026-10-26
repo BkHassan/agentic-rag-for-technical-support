@@ -82,6 +82,20 @@ def test_gate_scores_the_original_ticket_text() -> None:
     assert source == "gemini_tool"
 
 
+def test_gate_reuses_hits_already_scored_for_the_ticket_text() -> None:
+    ticket = SupportTicket(ticket_id="T-1", description="Something is wrong with login.")
+    tool_outcome = {"used_knowledge_base": True}
+    prior = [_hit("authentication_failures", 0.2)]
+    with patch("app.agent.retrieve") as retrieve:
+        evidence, performed, source = collect_evidence_for_ticket(
+            ticket, tool_outcome, cfg=CFG, prior_ticket_hits=prior
+        )
+    retrieve.assert_not_called()
+    assert evidence == prior
+    assert performed is True
+    assert source == "gemini_tool"
+
+
 def _row(ticket_id: str, label: str, distance: float, contrast: float) -> dict:
     return {
         "ticket_id": ticket_id,

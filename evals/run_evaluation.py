@@ -81,6 +81,10 @@ def run_one(ticket_spec: dict[str, Any]) -> dict[str, Any]:
             "clarification_missing": trace.clarification_missing,
             "completeness": trace.completeness,
             "clarification_overridden": trace.clarification_overridden,
+            "gemini_calls": trace.gemini_calls,
+            "embed_api_calls": trace.embed_api_calls,
+            "embed_cache_hits": trace.embed_cache_hits,
+            "stage_ms": trace.stage_ms,
         }
     except Exception as exc:  # noqa: BLE001 - keep one API failure from aborting the report
         if _is_quota_error(str(exc)):
@@ -191,6 +195,24 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def render_markdown(report: dict[str, Any]) -> str:
+def _cost_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Averages over rows that recorded call counts. Older traces omit them."""
+
+    def values(key: str) -> list[float]:
+        return [float(row["trace"][key]) for row in rows if row["trace"].get(key) is not None]
+
+    def average(key: str) -> float | None:
+        items = values(key)
+        return (sum(items) / len(items)) if items else None
+
+    return {
+        "tickets": len(values("gemini_calls")),
+        "avg_gemini_calls": average("gemini_calls"),
+        "avg_embed_api_calls": average("embed_api_calls"),
+        "avg_embed_cache_hits": average("embed_cache_hits"),
+    }
+
+
     summary = report["summary"]
     lines = [
         "# Evaluation results",
@@ -250,6 +272,18 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"- Avg latency: {latency['avg']:.0f} ms" if latency["avg"] is not None else "- Avg latency: n/a",
             f"- Max latency: {latency['max']:.0f} ms" if latency["max"] is not None else "- Max latency: n/a",
             "",
+        ]
+    )
+    cost = summary.get("cost") or {}
+    if cost.get("avg_gemini_calls") is not None:
+        lines.append(
+            "- Avg Gemini calls: "
+            f"{cost['avg_gemini_calls']:.2f}; avg embedding requests: "
+            f"{cost['avg_embed_api_calls']:.2f}; avg embedding cache hits: "
+            f"{cost['avg_embed_cache_hits']:.2f}"
+        )
+    lines.extend(
+        [
             "## Failures",
             "",
         ]

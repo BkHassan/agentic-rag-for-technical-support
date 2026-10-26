@@ -34,7 +34,7 @@ flowchart TD
 2. **Receive** a ticket (`ticket_id`, `description`) via `POST /tickets/analyze` or `handle_support_ticket()`.
 3. **Classify** the ticket into `network` | `database` | `authentication` | `application` | `other`, and extract completeness facts (is it a troubleshooting request, which system, which observable symptom) in the same call.
 4. **Clarify if needed**: a troubleshooting ticket with no observable symptom gets clarifying questions and stops here, before any search (see [Clarification](#clarification)).
-5. **Tool selection**: Gemini may request `search_technical_documentation`. The model does **not** execute Python — the app runs the search and returns results.
+5. **Tool selection**: Gemini may request `search_technical_documentation` in one round. The model does **not** execute Python — the app runs the search. Thanks, staffing, and announcements skip this call because classification already rejected them. The model is not asked to write from the tool result; the host does that in step 7, which avoids a second paid call. A ticket-text embedding is cached and reused when the clarification check and the evidence check search the same text.
 6. **Validate evidence** deterministically against the original ticket text: the best match must be close enough *and* stand out from unrelated documents (calibrated thresholds). Absence of retrieval is never treated as sufficient evidence.
 7. **Respond** with one of three `outcome` values:
    - `grounded_answer`: adequate evidence → recommendations with source references.
@@ -104,6 +104,8 @@ uvicorn app.main:app --reload
 Interactive docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 Health check: `GET /health`
+
+A browser console for submitting tickets lives in `frontend/`; see [frontend/README.md](frontend/README.md) for how to run it.
 
 ### Example — relevant documentation available
 

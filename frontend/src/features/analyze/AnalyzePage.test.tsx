@@ -37,7 +37,14 @@ async function fillTicket(ticketId: string, description: string) {
   const idInput = screen.getByRole('textbox', { name: /ticket id/i })
   await user.clear(idInput)
   await user.type(idInput, ticketId)
-  await user.type(screen.getByRole('textbox', { name: /issue description/i }), description)
+  const descriptionField = screen.getByRole('textbox', { name: /issue description/i })
+  await user.click(descriptionField)
+  // Clipboard paste of whitespace-only text is a no-op in jsdom; type those cases.
+  if (description.trim() === '') {
+    await user.type(descriptionField, description)
+  } else {
+    await user.paste(description)
+  }
   return user
 }
 
@@ -149,5 +156,32 @@ describe('ticket form', () => {
     const ticketId = (screen.getByRole('textbox', { name: /ticket id/i }) as HTMLInputElement).value
     expect(ticketId).toMatch(/^WEB-\d{8}-[A-Z2-9]{4}$/)
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('"Clear" also removes the result for the cleared ticket', async () => {
+    stubFetch(() => Promise.resolve(jsonResponse(200, RECORDED_GROUNDED_ANSWER)))
+    const user = await fillTicket('E-REL-001', DESCRIPTION)
+
+    await user.click(screen.getByRole('button', { name: 'Analyze ticket' }))
+    expect(await screen.findByText('Recommended steps')).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Clear' }))
+
+    expect(screen.queryByText('Recommended steps')).toBeNull()
+    expect(screen.getByText('No ticket analyzed yet')).toBeTruthy()
+    expect((screen.getByRole('textbox', { name: /issue description/i }) as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('"Clear" also removes an error for the cleared ticket', async () => {
+    stubFetch(() => Promise.reject(new TypeError('Failed to fetch')))
+    const user = await fillTicket('E-REL-001', DESCRIPTION)
+
+    await user.click(screen.getByRole('button', { name: 'Analyze ticket' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Clear' }))
+
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByText('No ticket analyzed yet')).toBeTruthy()
   })
 })
