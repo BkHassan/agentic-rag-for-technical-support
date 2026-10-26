@@ -1,0 +1,24 @@
+.page {
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* Results carry the most reading, so they get the wider column. */
+@media (min-width: 1180px) {
+  .grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+}
+
+/* Keep the ticket beside a long result, but only where the whole form fits on screen. */
+@media (min-width: 1180px) and (min-height: 820px) {
+  .formColumn {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-6));
+  }
+}
