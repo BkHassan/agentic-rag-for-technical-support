@@ -12,6 +12,7 @@ from app.agent import (
 )
 from app.rag.guardrails import FALLBACK_MESSAGE, validate_retrieval_evidence
 from app.schemas import GroundedAdvice, SupportTicket, TicketCategory, TicketClassification
+from tests.retrieval_fixtures import background_docs
 
 
 DB_EVIDENCE = [
@@ -28,12 +29,12 @@ DB_EVIDENCE = [
         "distance": 0.18,
         "score": 0.82,
     }
-]
+] + background_docs()
 
 
 def test_assess_evidence_requires_relevant_distance() -> None:
-    weak = [{"source": "a.md", "distance": 0.90, "text": "unrelated"}]
-    strong = [{"source": "a.md", "distance": 0.20, "text": "relevant"}]
+    weak = [{"source": "a.md", "distance": 0.90, "text": "unrelated"}] + background_docs(0.91)
+    strong = [{"source": "a.md", "distance": 0.20, "text": "relevant"}] + background_docs()
     assert assess_evidence(weak, retrieval_performed=True)["sufficient_evidence"] is False
     assert assess_evidence(strong, retrieval_performed=True)["sufficient_evidence"] is True
     assert validate_retrieval_evidence(strong, retrieval_performed=False).sufficient_evidence is False

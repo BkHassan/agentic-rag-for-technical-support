@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -20,13 +21,17 @@ from app.rag.guardrails import (
     validate_retrieval_evidence,
 )
 from app.rag.ingestion import get_genai_client
+from app.rag.retrieval import retrieve
+from app.clarification import CLARIFICATION_MESSAGE, ClarificationDecision, decide_clarification
 from app.schemas import (
+    AgentOutcome,
     AgentResponse,
     DocumentSource,
     GroundedAdvice,
     SupportTicket,
     TicketCategory,
     TicketClassification,
+    TicketTriage,
 )
 from app.tools.knowledge_base import (
     SEARCH_TECHNICAL_DOCUMENTATION_NAME,
@@ -52,6 +57,20 @@ Rules:
 - Prefer the root technical domain (e.g. DB timeout → database, even if users mention "the application").
 - If multiple domains appear, pick the primary cause described in the ticket.
 - Do not invent facts that are not in the ticket.
+""".strip()
+
+COMPLETENESS_GUIDANCE = """
+Completeness facts (copy phrases exactly from the ticket; do not paraphrase or infer):
+- is_troubleshooting_request: true if the reporter says something is failing or not behaving
+  as expected, even when the report is vague ("we have an issue with X" is true). False only
+  for thanks, staffing, asking to be granted access or permissions, or announcements.
+- affected_system: the phrase naming the specific system, feature, or technology that fails.
+  Use null if the ticket only says "it", "the system", "the application", "the server", or similar.
+- observable_symptom: the clause saying what happens. A concrete behavior counts even without an
+  error message, e.g. "cannot reach the printer share", "never receives the email", "still shows
+  the old logo", "is missing from the menu", "returns 500". Use null only when the ticket says
+  nothing more specific than "broken", "not working", "something is wrong", "errors", "an issue",
+  or "slow".
 """.strip()
 
 AGENT_SYSTEM_INSTRUCTION = """
@@ -113,16 +132,37 @@ def _is_transient_gemini_error(exc: Exception) -> bool:
     )
 
 
+_RETRY_AFTER_RE = re.compile(r"retry in ([0-9]+(?:\.[0-9]+)?)s", re.IGNORECASE)
+
+
+def _gemini_error_message(exc: Exception) -> str:
+    return getattr(exc, "message", None) or str(exc)
+
+
+def is_daily_quota_error(message: str | None) -> bool:
+    """True when Gemini rejected the call for the daily free-tier cap."""
+    text = (message or "").lower()
+    return "per day" in text or "daily" in text
+
+
+def retry_delay_seconds(message: str, attempt: int, base_delay_sec: float) -> float:
+    """Use Gemini's retry hint for per-minute limits, capped so a daily cap does not sleep for hours."""
+    match = _RETRY_AFTER_RE.search(message or "")
+    if match and not is_daily_quota_error(message):
+        return min(float(match.group(1)) + 1.0, 90.0)
+    return base_delay_sec * attempt
+
+
 def _generate_content_with_retry(
     client: genai.Client,
     *,
     model: str,
     contents: Any,
     config: types.GenerateContentConfig,
-    max_attempts: int = 3,
+    max_attempts: int = 5,
     base_delay_sec: float = 1.5,
 ) -> Any:
-    """Call Gemini with short retries for transient overload / rate-limit errors."""
+    """Call Gemini with retries for transient overload and per-minute rate limits."""
     last_exc: Exception | None = None
     for attempt in range(1, max_attempts + 1):
         try:
@@ -133,14 +173,15 @@ def _generate_content_with_retry(
             )
         except (genai_errors.ServerError, genai_errors.ClientError) as exc:
             last_exc = exc
-            if attempt >= max_attempts or not _is_transient_gemini_error(exc):
+            message = _gemini_error_message(exc)
+            if is_daily_quota_error(message) or attempt >= max_attempts or not _is_transient_gemini_error(exc):
                 raise
-            delay = base_delay_sec * attempt
+            delay = retry_delay_seconds(message, attempt, base_delay_sec)
             logger.warning(
                 "Transient Gemini error on attempt %s/%s (%s). Retrying in %.1fs",
                 attempt,
                 max_attempts,
-                getattr(exc, "message", str(exc)),
+                message,
                 delay,
             )
             time.sleep(delay)
@@ -167,9 +208,10 @@ def classify_ticket(
     prompt = (
         "You are a technical support ticket classifier.\n\n"
         f"{CATEGORY_GUIDANCE}\n\n"
+        f"{COMPLETENESS_GUIDANCE}\n\n"
         f"Ticket ID: {ticket_model.ticket_id}\n"
         f"Ticket description:\n{ticket_model.description}\n\n"
-        "Return the best-fitting category and a short rationale."
+        "Return the best-fitting category, a short rationale, and the completeness facts."
     )
 
     logger.info("Classifying ticket_id=%s", ticket_model.ticket_id)
@@ -180,21 +222,22 @@ def classify_ticket(
         config=types.GenerateContentConfig(
             temperature=0,
             response_mime_type="application/json",
-            response_schema=TicketClassification,
+            response_schema=TicketTriage,
         ),
     )
 
     classification = _parse_classification(response)
     logger.info(
-        "Classified ticket_id=%s category=%s",
+        "Classified ticket_id=%s category=%s completeness=%s",
         ticket_model.ticket_id,
         classification.category.value,
+        classification.completeness.model_dump() if classification.completeness else None,
     )
     return classification
 
 
 def _parse_classification(response: Any) -> TicketClassification:
-    """Normalize Gemini structured output into TicketClassification."""
+    """Normalize Gemini structured output; completeness stays None if Gemini omitted it."""
     parsed = getattr(response, "parsed", None)
     if isinstance(parsed, TicketClassification):
         return parsed
@@ -438,11 +481,32 @@ def build_fallback_response(
     return AgentResponse(
         ticket_id=ticket.ticket_id,
         category=category,
+        outcome=AgentOutcome.FALLBACK,
         recommendations=[FALLBACK_MESSAGE],
-        sources=_sources_from_evidence(validation.retrieved_chunks),
+        sources=_sources_from_evidence(validation.retrieved_chunks[: settings.retrieval_top_k]),
         sufficient_evidence=False,
         fallback_triggered=True,
         summary=FALLBACK_MESSAGE,
+    )
+
+
+def build_clarification_response(
+    ticket: SupportTicket,
+    *,
+    category: TicketCategory,
+    decision: ClarificationDecision,
+) -> AgentResponse:
+    """Application-owned request for the details the ticket is missing. No retrieval, no Gemini."""
+    return AgentResponse(
+        ticket_id=ticket.ticket_id,
+        category=category,
+        outcome=AgentOutcome.CLARIFICATION_NEEDED,
+        clarifying_questions=list(decision.questions),
+        recommendations=[],
+        sources=[],
+        sufficient_evidence=False,
+        fallback_triggered=False,
+        summary=CLARIFICATION_MESSAGE,
     )
 
 
@@ -481,7 +545,7 @@ def generate_grounded_recommendations(
     if not validation.sufficient_evidence:
         return build_fallback_response(ticket, category=category, validation=validation)
 
-    relevant_evidence = validation.relevant_chunks
+    relevant_evidence = validation.relevant_chunks[: cfg.retrieval_top_k]
 
     prompt = (
         f"{GROUNDING_INSTRUCTIONS}\n\n"
@@ -532,6 +596,7 @@ def generate_grounded_recommendations(
     return AgentResponse(
         ticket_id=ticket.ticket_id,
         category=category,
+        outcome=AgentOutcome.GROUNDED_ANSWER,
         recommendations=recommendations,
         sources=_sources_from_evidence(relevant_evidence, cited),
         sufficient_evidence=True,
@@ -552,12 +617,17 @@ def collect_evidence_for_ticket(
     If Gemini did not request the knowledge-base tool, do not invent evidence and
     do not treat the missing tool call as sufficient. The host may later return
     the safe fallback after validation fails.
+
+    When Gemini did search, the host re-retrieves with the original ticket text and
+    judges sufficiency on those scores. Gemini's rewritten query can add domain
+    words a vague ticket never contained, and the calibrated thresholds were fitted
+    on ticket text.
     """
-    del cfg  # reserved for future host-side policy knobs
+    cfg = cfg or settings
     gemini_requested = bool(tool_outcome.get("used_knowledge_base"))
-    evidence = list(tool_outcome.get("evidence") or [])
 
     if gemini_requested:
+        evidence = retrieve(ticket.description, top_k=cfg.relevance_candidate_pool, cfg=cfg)
         return evidence, True, "gemini_tool"
 
     logger.info(
@@ -583,6 +653,28 @@ class TicketAnalysisTrace:
     tool_calls: list[dict[str, Any]]
     latency_ms: float
     error: str | None = None
+    clarification_missing: list[str] | None = None
+    completeness: dict[str, Any] | None = None
+    clarification_overridden: bool = False
+
+
+def check_ticket_specificity(
+    ticket: SupportTicket,
+    *,
+    cfg: Settings | None = None,
+) -> tuple[list[dict[str, Any]], EvidenceValidationResult]:
+    """
+    Second opinion before asking for clarification: does the ticket text alone
+    match one document strongly enough to pass the calibrated sufficiency rule?
+
+    Completeness extraction is a single, non-deterministic model call, so it can
+    miss a symptom the ticket plainly states. Vague tickets match many documents
+    weakly and fail this rule, so a pass means the ticket is specific enough.
+    Embedding lookup only; Gemini is not offered the search tool.
+    """
+    cfg = cfg or settings
+    candidates = retrieve(ticket.description, top_k=cfg.relevance_candidate_pool, cfg=cfg)
+    return candidates, validate_retrieval_evidence(candidates, retrieval_performed=True, cfg=cfg)
 
 
 def analyze_ticket_with_trace(
@@ -600,6 +692,55 @@ def analyze_ticket_with_trace(
     try:
         client = client or get_genai_client(cfg.google_api_key)
         classification = classify_ticket(ticket_model, client=client, cfg=cfg)
+        completeness = (
+            classification.completeness.model_dump() if classification.completeness else None
+        )
+        decision = decide_clarification(ticket_model.description, classification.completeness)
+        clarification_overridden = False
+        if decision.needed:
+            # A ticket that only names a system ("The VPN is acting weird") can match one
+            # document strongly without describing any symptom, so it is not re-checked.
+            candidates: list[dict[str, Any]] = []
+            specificity: EvidenceValidationResult | None = None
+            if decision.unexplained_detail:
+                candidates, specificity = check_ticket_specificity(ticket_model, cfg=cfg)
+            if specificity is not None and specificity.sufficient_evidence:
+                clarification_overridden = True
+                logger.info(
+                    "Clarification overridden ticket_id=%s missing=%s: ticket text matches "
+                    "documentation strongly (%s)",
+                    ticket_model.ticket_id,
+                    decision.missing,
+                    specificity.reason,
+                )
+            else:
+                logger.info(
+                    "Clarification needed ticket_id=%s missing=%s",
+                    ticket_model.ticket_id,
+                    decision.missing,
+                )
+                return TicketAnalysisTrace(
+                    response=build_clarification_response(
+                        ticket_model, category=classification.category, decision=decision
+                    ),
+                    classification_category=classification.category.value,
+                    gemini_requested_retrieval=False,
+                    retrieval_source="clarification",
+                    retrieval_performed=specificity is not None,
+                    evidence=candidates,
+                    validation_sufficient=False,
+                    validation_reason=(
+                        f"{decision.reason} {specificity.reason}"
+                        if specificity is not None
+                        else f"{decision.reason} The ticket has no detail beyond the system name."
+                    ),
+                    tool_calls=[],
+                    latency_ms=(time.perf_counter() - started) * 1000.0,
+                    error=None,
+                    clarification_missing=list(decision.missing),
+                    completeness=completeness,
+                )
+
         tool_outcome = run_tool_calling_turn(ticket_model, client=client, cfg=cfg)
         evidence, retrieval_performed, retrieval_source = collect_evidence_for_ticket(
             ticket_model,
@@ -632,6 +773,8 @@ def analyze_ticket_with_trace(
             tool_calls=list(tool_outcome.get("tool_calls") or []),
             latency_ms=(time.perf_counter() - started) * 1000.0,
             error=None,
+            completeness=completeness,
+            clarification_overridden=clarification_overridden,
         )
     except ValueError:
         # Config / input problems (e.g. missing GOOGLE_API_KEY) should surface to the API.
@@ -645,6 +788,7 @@ def analyze_ticket_with_trace(
         failed = AgentResponse(
             ticket_id=ticket_model.ticket_id,
             category=TicketCategory.OTHER,
+            outcome=AgentOutcome.FALLBACK,
             recommendations=[FALLBACK_MESSAGE],
             sources=[],
             sufficient_evidence=False,
@@ -675,10 +819,12 @@ def handle_support_ticket(
 ) -> AgentResponse:
     """
     Full agent path:
-    1) classify
-    2) let Gemini request documentation search (app executes the tool)
-    3) validate evidence deterministically (before final LLM recommendations)
-    4) generate grounded recommendations or return the safe fallback
+    1) classify and extract completeness facts
+    2) if no observable symptom was extracted and the ticket text does not match one
+       document strongly, ask for clarification (Gemini is not offered search)
+    3) let Gemini request documentation search (app executes the tool)
+    4) validate evidence deterministically (before final LLM recommendations)
+    5) generate grounded recommendations or return the documentation fallback
     """
     trace = analyze_ticket_with_trace(
         ticket,

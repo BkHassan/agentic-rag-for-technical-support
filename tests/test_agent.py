@@ -7,7 +7,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.agent import _parse_classification, classify_ticket
+from app.agent import (
+    _parse_classification,
+    classify_ticket,
+    is_daily_quota_error,
+    retry_delay_seconds,
+)
 from app.schemas import SupportTicket, TicketCategory, TicketClassification
 
 REQUIRES_API_KEY = pytest.mark.skipif(
@@ -33,6 +38,18 @@ def test_parse_classification_from_parsed_model() -> None:
     )
     result = _parse_classification(SimpleNamespace(parsed=parsed, text=None))
     assert result.category == TicketCategory.AUTHENTICATION
+
+
+def test_per_minute_retry_uses_gemini_hint() -> None:
+    message = "Quota exceeded. Generate content requests per minute. Please retry in 39.5s."
+    assert is_daily_quota_error(message) is False
+    assert retry_delay_seconds(message, attempt=1, base_delay_sec=1.5) == 40.5
+
+
+def test_daily_quota_is_not_treated_as_a_short_retry() -> None:
+    message = "You exceeded your current quota. per day limit exceeded. Please retry in 15h."
+    assert is_daily_quota_error(message) is True
+    assert retry_delay_seconds(message, attempt=2, base_delay_sec=1.5) == 3.0
 
 
 @REQUIRES_API_KEY

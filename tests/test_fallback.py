@@ -13,8 +13,9 @@ from app.rag.guardrails import (
     validate_retrieval_evidence,
 )
 from app.schemas import GroundedAdvice, SupportTicket, TicketCategory
+from tests.retrieval_fixtures import background_docs
 
-# Relevant database documentation (cosine distance below threshold).
+# Relevant database documentation that clearly stands out from unrelated results.
 RELEVANT_DB_DOCS = [
     {
         "text": (
@@ -28,7 +29,7 @@ RELEVANT_DB_DOCS = [
         "distance": 0.18,
         "score": 0.82,
     }
-]
+] + background_docs()
 
 # Nearest neighbors that are still irrelevant (high cosine distance).
 IRRELEVANT_DOCS = [
