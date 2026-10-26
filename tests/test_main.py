@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from google.genai import errors as genai_errors
 
 from app.main import app
-from app.schemas import AgentResponse, TicketCategory
+from app.schemas import AgentOutcome, AgentResponse, TicketCategory
 
 client = TestClient(app)
 
@@ -31,6 +31,7 @@ def test_analyze_ticket_returns_agent_response() -> None:
     payload = AgentResponse(
         ticket_id="T-DB-001",
         category=TicketCategory.DATABASE,
+        outcome=AgentOutcome.GROUNDED_ANSWER,
         recommendations=["Verify DB credentials."],
         sources=[],
         sufficient_evidence=True,

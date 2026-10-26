@@ -17,7 +17,8 @@ app = FastAPI(
     title="Agentic Technical Support",
     description=(
         "Classify support tickets, retrieve technical documentation, and return "
-        "evidence-grounded troubleshooting recommendations (or a safe fallback)."
+        "evidence-grounded troubleshooting recommendations, clarifying questions when "
+        "the ticket is too vague, or a safe fallback when documentation is insufficient."
     ),
     version="0.1.0",
 )
@@ -34,8 +35,8 @@ def health() -> dict[str, str]:
     tags=["tickets"],
     summary="Analyze a support ticket",
     response_description=(
-        "Ticket category, recommendations or fallback message, source references, "
-        "and evidence status flags."
+        "Ticket category, outcome (grounded_answer, clarification_needed, or fallback), "
+        "recommendations or clarifying questions, source references, and evidence status flags."
     ),
     responses={
         400: {"description": "Invalid request or missing configuration (e.g. API key)"},
@@ -58,7 +59,14 @@ def health() -> dict[str, str]:
                                     "the database connection keeps timing out."
                                 ),
                             },
-                        }
+                        },
+                        "vague_ticket": {
+                            "summary": "Too vague: asks for clarification",
+                            "value": {
+                                "ticket_id": "T-VAGUE-001",
+                                "description": "It stopped working after yesterday.",
+                            },
+                        },
                     }
                 }
             }
@@ -69,8 +77,8 @@ def analyze_ticket(ticket: SupportTicket) -> AgentResponse:
     """
     Accept a support ticket and run the agent pipeline.
 
-    Returns classification, recommendations or fallback, cited sources, and
-    `sufficient_evidence` / `fallback_triggered` flags.
+    Returns classification, `outcome`, recommendations or clarifying questions,
+    cited sources, and `sufficient_evidence` / `fallback_triggered` flags.
     """
     try:
         return handle_support_ticket(ticket)
