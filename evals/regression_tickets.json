@@ -1,0 +1,177 @@
+{
+  "version": "1.0",
+  "description": "Regression tickets added after the clarification and sufficiency changes. Kept separate from support_tickets.json so the original 20-ticket results stay comparable across versions. Expected outcomes follow the outcome_policy in support_tickets.json and were set before these tickets were run; they must not be changed to match agent answers.",
+  "summary": {
+    "total": 16,
+    "expected_outcomes": {
+      "grounded_answer": 6,
+      "clarification_needed": 3,
+      "fallback": 7
+    }
+  },
+  "tickets": [
+    {
+      "ticket_id": "R-REL-001",
+      "group": "relevant_documentation",
+      "description": "Staff cannot resolve intranet hostnames since the DNS migration, but connecting by IP address still works.",
+      "expected_category": "network",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": ["dns_resolution_failures.md", "network_connectivity_basics.md"],
+      "expected_outcome": "grounded_answer",
+      "regression_target": "Paraphrase of E-REL-004: a behavioral symptom without an error code, which the symptom extractor sometimes misses."
+    },
+    {
+      "ticket_id": "R-REL-002",
+      "group": "relevant_documentation",
+      "description": "Our service returns HTTP 502 Bad Gateway for a few minutes after every deployment.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": ["http_502_bad_gateway.md"],
+      "expected_outcome": "grounded_answer",
+      "regression_target": "Generic system name ('our service') with a specific symptom must not trigger clarification."
+    },
+    {
+      "ticket_id": "R-REL-003",
+      "group": "relevant_documentation",
+      "description": "Users are sent back to the sign-in page right after they log in through SSO.",
+      "expected_category": "authentication",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": ["session_tokens_and_sso.md", "authentication_failures.md"],
+      "expected_outcome": "grounded_answer",
+      "regression_target": "Behavioral symptom (redirect loop) with no error text."
+    },
+    {
+      "ticket_id": "R-REL-004",
+      "group": "relevant_documentation",
+      "description": "Uploading files larger than 10 MB fails with HTTP 413 Request Entity Too Large.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": ["file_upload_failures.md", "multipart_upload_and_storage.md"],
+      "expected_outcome": "grounded_answer",
+      "regression_target": "Explicit status code; must stay grounded after the clarification step was added."
+    },
+    {
+      "ticket_id": "R-REL-005",
+      "group": "relevant_documentation",
+      "description": "Several laptops on the third floor got 169.254 addresses and cannot reach the internet.",
+      "expected_category": "network",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": ["ip_configuration_troubleshooting.md", "network_connectivity_basics.md"],
+      "expected_outcome": "grounded_answer",
+      "regression_target": "Symptom given as an observation (an address range), not an error message."
+    },
+    {
+      "ticket_id": "R-REL-006",
+      "group": "relevant_documentation",
+      "description": "The orders API times out because its queries wait on row locks held by a long-running report.",
+      "expected_category": "database",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": ["database_timeouts_and_locks.md"],
+      "expected_outcome": "grounded_answer",
+      "regression_target": "Specific database lock symptom; checks the sufficiency rule still accepts it."
+    },
+    {
+      "ticket_id": "R-IRR-001",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Grafana panels show 'No data' for Prometheus metrics after we upgraded node_exporter.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "expected_outcome": "fallback",
+      "regression_target": "Specific but undocumented: must fall back, not ask for clarification."
+    },
+    {
+      "ticket_id": "R-IRR-002",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Screen sharing in Zoom shows a black window on macOS after the latest OS update.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "expected_outcome": "fallback",
+      "regression_target": "Specific but undocumented desktop issue."
+    },
+    {
+      "ticket_id": "R-IRR-003",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Celery workers stop consuming tasks from the RabbitMQ queue after a broker restart.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "expected_outcome": "fallback",
+      "regression_target": "Specific but undocumented message-queue issue."
+    },
+    {
+      "ticket_id": "R-AMB-001",
+      "group": "ambiguous_or_underspecified",
+      "description": "Nothing loads anymore, please help.",
+      "expected_category": "other",
+      "retrieval_appropriate": false,
+      "expected_supporting_documents": [],
+      "expected_outcome": "clarification_needed",
+      "missing_information": ["affected_system", "observable_symptom"],
+      "regression_target": "No system and no specific symptom."
+    },
+    {
+      "ticket_id": "R-AMB-002",
+      "group": "ambiguous_or_underspecified",
+      "description": "We're seeing errors since this morning.",
+      "expected_category": "other",
+      "retrieval_appropriate": false,
+      "expected_supporting_documents": [],
+      "expected_outcome": "clarification_needed",
+      "missing_information": ["affected_system", "observable_symptom"],
+      "regression_target": "Generic 'errors' with a time reference only."
+    },
+    {
+      "ticket_id": "R-AMB-003",
+      "group": "ambiguous_or_underspecified",
+      "description": "The VPN is acting weird.",
+      "expected_category": "network",
+      "retrieval_appropriate": false,
+      "expected_supporting_documents": [],
+      "expected_outcome": "clarification_needed",
+      "missing_information": ["observable_symptom"],
+      "regression_target": "Names a documented system but no symptom. Probes whether the specificity check overrides clarification just because the system name matches one document."
+    },
+    {
+      "ticket_id": "R-NRT-001",
+      "group": "should_not_require_retrieval",
+      "description": "Please order a second monitor for my desk.",
+      "expected_category": "other",
+      "retrieval_appropriate": false,
+      "expected_supporting_documents": [],
+      "expected_outcome": "fallback",
+      "regression_target": "Procurement request, not troubleshooting."
+    },
+    {
+      "ticket_id": "R-NRT-002",
+      "group": "should_not_require_retrieval",
+      "description": "FYI: the office network will be down for maintenance on Saturday from 2 to 4 AM.",
+      "expected_category": "other",
+      "retrieval_appropriate": false,
+      "expected_supporting_documents": [],
+      "expected_outcome": "fallback",
+      "regression_target": "Announcement that mentions an outage; must not be treated as a problem report."
+    },
+    {
+      "ticket_id": "R-IRR-004",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Our Kafka Connect S3 sink writes empty Parquet files after the schema registry upgrade.",
+      "expected_category": "application",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "expected_outcome": "fallback",
+      "regression_target": "Mentions S3 and files, which overlap the upload docs lexically; must not be answered from them."
+    },
+    {
+      "ticket_id": "R-IRR-005",
+      "group": "insufficient_or_irrelevant_evidence",
+      "description": "Okta SCIM provisioning does not create accounts in Slack for new hires.",
+      "expected_category": "authentication",
+      "retrieval_appropriate": true,
+      "expected_supporting_documents": [],
+      "expected_outcome": "fallback",
+      "regression_target": "Identity-adjacent wording overlaps the authentication docs, but provisioning is not documented."
+    }
+  ]
+}
