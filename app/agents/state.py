@@ -147,6 +147,8 @@ class EvidenceDecision(BaseModel):
     sufficient: bool
     reason: str = Field(..., min_length=1)
     accepted: list[DocumentSource] = Field(default_factory=list)
+    # Machine-readable form of `reason` for diagnostics (see evidence_reason_code).
+    reason_code: str | None = Field(default=None, max_length=64)
 
     @field_validator("accepted")
     @classmethod
@@ -209,6 +211,8 @@ class TicketRunState(BaseModel):
     embed_api_calls: int = Field(default=0, ge=0)
     embed_cache_hits: int = Field(default=0, ge=0)
     error: str | None = Field(default=None, max_length=_ERROR_MAX_LENGTH)
+    # Server-side category for `error`; never part of the client response.
+    error_category: str | None = Field(default=None, max_length=64)
 
     @field_validator("error")
     @classmethod

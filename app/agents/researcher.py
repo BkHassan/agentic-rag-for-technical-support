@@ -23,7 +23,7 @@ from app.agents.state import (
 )
 from app.agents.triage import TriageAssessment
 from app.config import Settings, settings
-from app.rag.ingestion import get_genai_client
+from app.retrieval.ingestion import get_genai_client
 from app.schemas import DocumentSource, SupportTicket, TicketTriage
 from app.tools.knowledge_base import SEARCH_TECHNICAL_DOCUMENTATION_NAME
 
@@ -114,7 +114,9 @@ def research_ticket(
         model_calls += 1
     except Exception as exc:  # noqa: BLE001 - the model failure must not look like retrieved evidence
         model_calls += 1
-        message = "model rate limit" if _is_rate_limit(exc) else f"model call failed: {type(exc).__name__}"
+        from app.orchestration.model import describe_model_failure
+
+        message = "model rate limit" if _is_rate_limit(exc) else describe_model_failure(exc)
         return ResearchRun(
             research=Stage(status=StageStatus.INVALID, error=_public_error(message)),
             model_calls=model_calls,
@@ -257,7 +259,7 @@ def _validated_triage(
     if isinstance(triage, TriageAssessment):
         return triage.classification, triage.clarification.needed
     classification = TicketTriage.model_validate(triage.model_dump())
-    from app.clarification import decide_clarification
+    from app.policies.clarification import decide_clarification
 
     return classification, decide_clarification(description, classification.completeness).needed
 
@@ -291,7 +293,7 @@ def _complete_with_gemini(
     client: Any | None,
     cfg: Settings,
 ) -> Any:
-    from app.agent import _generate_content_with_retry
+    from app.orchestration.model import _generate_content_with_retry
 
     gemini = client or get_genai_client(cfg.google_api_key)
     return _generate_content_with_retry(
@@ -303,7 +305,7 @@ def _complete_with_gemini(
 
 
 def _default_retriever(cfg: Settings) -> Retrieve:
-    from app.rag.retrieval import retrieve
+    from app.retrieval.retrieval import retrieve
 
     def retrieve_documents(query: str) -> list[dict[str, Any]]:
         return retrieve(query, top_k=cfg.retrieval_top_k, cfg=cfg)

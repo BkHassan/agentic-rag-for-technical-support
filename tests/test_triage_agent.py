@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from app.agents.state import Stage, StageStatus, TicketRunState, WorkflowStatus, clarification_stage
 from app.agents.triage import TRIAGE_SYSTEM_INSTRUCTION, TriageOutputError, triage_ticket
-from app.rag.retrieval import retrieve
+from app.retrieval.retrieval import retrieve
 from app.schemas import SupportTicket, TicketCategory, TicketClassification
 from app.tools.knowledge_base import execute_tool_call
 
@@ -180,7 +180,7 @@ def test_prompt_injection_cannot_change_the_role_or_become_a_tool_call() -> None
         )
 
     with (
-        patch("app.rag.retrieval.retrieve", wraps=retrieve) as retrieve_mock,
+        patch("app.retrieval.retrieval.retrieve", wraps=retrieve) as retrieve_mock,
         patch("app.tools.knowledge_base.execute_tool_call", wraps=execute_tool_call) as tool_mock,
     ):
         with pytest.raises(TriageOutputError, match="not json"):

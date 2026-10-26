@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from app.agent import generate_grounded_recommendations
-from app.rag.guardrails import (
+from app.policies.evidence import (
     FALLBACK_MESSAGE,
     is_relevant,
     should_return_fallback,

@@ -1,0 +1,27 @@
+# The API key is read from .env at runtime. It is not baked into either image.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - chroma:/app/data/chroma
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  chroma:

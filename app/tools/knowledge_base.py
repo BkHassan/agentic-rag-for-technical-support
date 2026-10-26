@@ -13,7 +13,7 @@ from typing import Any
 from google.genai import types
 
 from app.config import Settings, settings
-from app.rag.retrieval import filter_by_relevance, retrieve
+from app.retrieval.retrieval import filter_by_relevance, retrieve
 
 logger = logging.getLogger(__name__)
 

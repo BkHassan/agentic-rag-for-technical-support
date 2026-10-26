@@ -3,7 +3,7 @@ Check the clarification decision on the labeled calibration tickets.
 
 Usage (from project root, with GOOGLE_API_KEY):
 
-    python -m evals.check_clarification
+    python -m evaluation.check_clarification
 
 Runs only the classification step (one Gemini call per ticket, no retrieval) and
 applies `decide_clarification`. Expected: the vague group asks for clarification;
@@ -24,8 +24,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from app.agent import classify_ticket, is_daily_quota_error
-from app.clarification import decide_clarification
+from app.orchestration.coordinator import classify_ticket
+from app.orchestration.model import is_daily_quota_error
+from app.policies.clarification import decide_clarification
 from app.config import settings
 
 logger = logging.getLogger(__name__)

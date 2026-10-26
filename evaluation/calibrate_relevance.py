@@ -3,8 +3,8 @@ Calibrate the retrieval sufficiency rule on labeled examples.
 
 Usage (from project root, with GOOGLE_API_KEY and an ingested Chroma index):
 
-    python -m evals.calibrate_relevance
-    python -m evals.calibrate_relevance --reuse-features   # refit without API calls
+    python -m evaluation.calibrate_relevance
+    python -m evaluation.calibrate_relevance --reuse-features   # refit without API calls
 
 Each labeled ticket is retrieved with its original text (as the API's gate does),
 then three rule families are fitted on the retrieval scores:
@@ -39,8 +39,8 @@ from typing import Any
 import numpy as np
 
 from app.config import settings
-from app.rag.guardrails import relevance_features
-from app.rag.retrieval import retrieve_many
+from app.policies.evidence import relevance_features
+from app.retrieval.retrieval import retrieve_many
 
 logger = logging.getLogger(__name__)
 

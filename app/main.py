@@ -3,15 +3,30 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from google.genai import errors as genai_errors
 
-from app.agent import handle_support_ticket
+from app import observability as obs
+from app.orchestration import handle_support_ticket
+from app.orchestration.coordinator import CoordinatorFailure
 from app.schemas import AgentResponse, SupportTicket
 
 logger = logging.getLogger(__name__)
+
+# Client-facing details are fixed sentences. Exception text, upstream Gemini messages,
+# and configuration values stay in the server log.
+DETAIL_MISSING_API_KEY = "GOOGLE_API_KEY is not configured on the server."
+DETAIL_BAD_REQUEST = "The ticket could not be processed."
+DETAIL_RATE_LIMIT = "Gemini API rate limit exceeded. Please wait and retry."
+DETAIL_CLIENT_ERROR = "Gemini API client error."
+DETAIL_SERVER_ERROR = "Upstream Gemini service error. Please try again shortly."
+DETAIL_UNAVAILABLE = "The analysis could not be completed."
+
+# Same shape the frontend parses: "retry in 41.2s", "retry in 7h9m23.6s".
+_RETRY_IN_RE = re.compile(r"retry in ((?:\d+(?:\.\d+)?(?:ms|h|m|s))+)", re.IGNORECASE)
 
 app = FastAPI(
     title="Agentic Technical Support",
@@ -22,6 +37,15 @@ app = FastAPI(
     ),
     version="0.1.0",
 )
+
+
+@app.middleware("http")
+async def bind_request_id(request: Request, call_next):
+    """One ID per request for server logs; echoed so a client can quote it to support."""
+    with obs.request_context(request.headers.get("x-request-id")) as request_id:
+        response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 @app.get("/health", tags=["system"])
@@ -86,7 +110,7 @@ def analyze_ticket(ticket: SupportTicket) -> AgentResponse:
         logger.warning("Bad request for ticket_id=%s: %s", ticket.ticket_id, exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            detail=_bad_request_detail(exc),
         ) from exc
     except genai_errors.ClientError as exc:
         http_status = _client_error_http_status(exc)
@@ -108,23 +132,25 @@ def analyze_ticket(ticket: SupportTicket) -> AgentResponse:
             upstream,
         )
         # High demand / temporary Gemini outages are unavailable, not a bad gateway.
-        detail = (
-            f"Upstream Gemini service error: {upstream}"
-            if upstream
-            else "Upstream Gemini service error. Please try again shortly."
-        )
         lowered = upstream.lower()
         http_status = (
             status.HTTP_503_SERVICE_UNAVAILABLE
             if "high demand" in lowered or "try again" in lowered
             else status.HTTP_502_BAD_GATEWAY
         )
-        raise HTTPException(status_code=http_status, detail=detail) from exc
-    except RuntimeError as exc:
-        logger.error("Agent runtime error ticket_id=%s: %s", ticket.ticket_id, exc)
+        raise HTTPException(status_code=http_status, detail=DETAIL_SERVER_ERROR) from exc
+    except CoordinatorFailure as exc:
+        # The coordinator's message is already a fixed public sentence (e.g. a timeout).
+        logger.error("Coordinator failure ticket_id=%s: %s", ticket.ticket_id, exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
+            detail=str(exc) or DETAIL_UNAVAILABLE,
+        ) from exc
+    except RuntimeError as exc:
+        logger.exception("Agent runtime error ticket_id=%s", ticket.ticket_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=DETAIL_UNAVAILABLE,
         ) from exc
     except Exception as exc:  # noqa: BLE001 - API boundary
         logger.exception("Unexpected failure analyzing ticket_id=%s", ticket.ticket_id)
@@ -163,14 +189,16 @@ def _client_error_http_status(exc: genai_errors.ClientError) -> int:
 
 
 def _client_error_detail(exc: genai_errors.ClientError) -> str:
-    code = getattr(exc, "code", None)
-    message = getattr(exc, "message", None) or str(exc)
-    try:
-        if int(code) == 429:
-            return (
-                "Gemini API rate limit exceeded. Please wait and retry. "
-                f"Upstream message: {message}"
-            )
-    except (TypeError, ValueError):
-        pass
-    return f"Gemini API client error: {message}"
+    if _client_error_http_status(exc) != status.HTTP_429_TOO_MANY_REQUESTS:
+        return DETAIL_CLIENT_ERROR
+    # Pass on only the retry delay, which the console uses for its countdown.
+    match = _RETRY_IN_RE.search(getattr(exc, "message", None) or str(exc))
+    if match is None:
+        return DETAIL_RATE_LIMIT
+    return f"Gemini API rate limit exceeded. Please retry in {match.group(1)}."
+
+
+def _bad_request_detail(exc: ValueError) -> str:
+    if "GOOGLE_API_KEY" in str(exc):
+        return DETAIL_MISSING_API_KEY
+    return DETAIL_BAD_REQUEST

@@ -43,13 +43,17 @@ class Settings(BaseSettings):
     relevance_candidate_pool: int = 15
 
     # Sufficiency rule (see app/rag/guardrails.py). Collection space is cosine:
-    # lower distance = closer. Re-run `python -m evals.calibrate_relevance` after
+    # lower distance = closer. Re-run `python -m evaluation.calibrate_relevance` after
     # changing the corpus, chunking, or embedding model; these values depend on all three.
     relevance_max_distance: float = 0.3687
     relevance_min_contrast: float = 0.0442
     relevance_contrast_rank: int = 5
     # Minimum number of chunks that must clear the distance threshold.
     min_relevant_chunks: int = 1
+
+    # Bounds for one coordinator step. The coordinator does not retry a timed-out call.
+    model_call_timeout_seconds: float = Field(default=45.0, gt=0)
+    tool_execution_timeout_seconds: float = Field(default=20.0, gt=0)
 
 
 settings = Settings()

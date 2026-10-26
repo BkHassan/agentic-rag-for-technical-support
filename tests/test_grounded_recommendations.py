@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from app.agent import (
-    assess_evidence,
-    generate_grounded_recommendations,
-    handle_support_ticket,
-)
-from app.rag.guardrails import FALLBACK_MESSAGE, validate_retrieval_evidence
-from app.schemas import GroundedAdvice, SupportTicket, TicketCategory, TicketClassification
+from app.agent import generate_grounded_recommendations, handle_support_ticket
+from app.policies.evidence import FALLBACK_MESSAGE, assess_evidence, validate_retrieval_evidence
+from app.schemas import GroundedAdvice, SupportTicket, TicketCategory
 from tests.retrieval_fixtures import background_docs
 
 
@@ -122,41 +118,26 @@ def test_generate_drops_hallucinated_citations() -> None:
 
 
 def test_handle_support_ticket_orchestrates_classify_tools_and_grounding() -> None:
+    from tests.test_coordinator import (
+        _assessment,
+        _chunk,
+        _research_ok,
+        _validation,
+        _writer_ok,
+    )
+
     ticket = SupportTicket(
         ticket_id="T-DB-001",
         description="Database connection keeps timing out.",
     )
-    classification = TicketClassification(
-        category=TicketCategory.DATABASE,
-        rationale="Mentions database connection timeouts.",
+    result = handle_support_ticket(
+        ticket,
+        triage_agent=lambda *args, **kwargs: _assessment(ticket.description),
+        research_agent=lambda *args, **kwargs: _research_ok(),
+        writer_agent=lambda *args, **kwargs: _writer_ok(),
+        evidence_gate=lambda *args, **kwargs: _validation(sufficient=True, chunks=[_chunk()]),
+        retrieve_documents=lambda query: [],
     )
-    grounded = GroundedAdvice(
-        recommendations=["Test DB connectivity with a native client."],
-        cited_sources=["database_connection_failures.md"],
-        summary="Documented connectivity checks apply. Uncertainty remains on root cause.",
-    )
-    fake_client = MagicMock()
-    fake_client.models.generate_content.return_value = SimpleNamespace(
-        parsed=grounded, text=None
-    )
-
-    with (
-        patch("app.agent.classify_ticket", return_value=classification),
-        patch(
-            "app.agent.run_tool_calling_turn",
-            return_value={
-                "evidence": DB_EVIDENCE,
-                "tool_calls": [{"name": "search_technical_documentation"}],
-                "used_knowledge_base": True,
-                "response_text": "",
-            },
-        ),
-        patch(
-            "app.agent.collect_evidence_for_ticket",
-            return_value=(DB_EVIDENCE, True, "gemini_tool"),
-        ),
-    ):
-        result = handle_support_ticket(ticket, client=fake_client)
 
     assert result.ticket_id == "T-DB-001"
     assert result.category == TicketCategory.DATABASE
