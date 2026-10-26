@@ -1,0 +1,50 @@
+.drawer {
+  width: min(300px, 86vw);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-right: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+}
+
+.drawer::backdrop {
+  background: rgb(20 19 17 / 0.4);
+}
+
+.drawer[open] {
+  animation: slide-in var(--duration-slow) var(--ease-out);
+}
+
+.drawer[open]::backdrop {
+  animation: fade-in var(--duration-slow) var(--ease-out);
+}
+
+.panel {
+  position: relative;
+  height: 100%;
+}
+
+.close {
+  position: absolute;
+  top: calc((var(--header-height) - var(--control-height-sm)) / 2);
+  right: var(--space-3);
+  z-index: 1;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
