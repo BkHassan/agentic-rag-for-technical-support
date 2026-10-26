@@ -1,0 +1,830 @@
+{
+  "generated_at": "2026-10-25T15:27:17+00:00",
+  "model": "gemini-3.5-flash-lite",
+  "rows": [
+    {
+      "ticket_id": "C-ANS-01",
+      "group": "answerable",
+      "description": "nslookup for intranet.corp.local returns NXDOMAIN on laptops, but the record exists on the DNS server.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "intranet.corp.local",
+        "observable_symptom": "returns NXDOMAIN on laptops"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-02",
+      "group": "answerable",
+      "description": "We changed the A record for the API host, and some clients still go to the old IP address.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "API host",
+        "observable_symptom": "still go to the old IP address"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-03",
+      "group": "answerable",
+      "description": "The load balancer returns 504 when the reports endpoint runs a long export.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "The load balancer",
+        "observable_symptom": "returns 504 when the reports endpoint runs a long export"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-04",
+      "group": "answerable",
+      "description": "API calls through nginx fail with a gateway timeout after 60 seconds while the backend is still processing.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "nginx",
+        "observable_symptom": "fail with a gateway timeout after 60 seconds"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-05",
+      "group": "answerable",
+      "description": "Our service returns 503 Service Unavailable during traffic spikes before autoscaling catches up.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Our service",
+        "observable_symptom": "returns 503 Service Unavailable during traffic spikes before autoscaling catches up"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-06",
+      "group": "answerable",
+      "description": "The site still shows a maintenance page and 503 errors even though maintenance finished an hour ago.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "The site",
+        "observable_symptom": "still shows a maintenance page and 503 errors"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-07",
+      "group": "answerable",
+      "description": "Nginx logs 'upstream prematurely closed connection' and clients get 502 errors.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Nginx",
+        "observable_symptom": "clients get 502 errors"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-08",
+      "group": "answerable",
+      "description": "We see intermittent 502 Bad Gateway responses when idle keep-alive connections to the backend are reused.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "backend",
+        "observable_symptom": "intermittent 502 Bad Gateway responses"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-09",
+      "group": "answerable",
+      "description": "The app fails to start with 'connection refused' on port 5432 to the Postgres server.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Postgres server",
+        "observable_symptom": "'connection refused' on port 5432"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-10",
+      "group": "answerable",
+      "description": "After rotating the database password, the API can no longer open connections to MySQL.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "MySQL",
+        "observable_symptom": "can no longer open connections to MySQL"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-11",
+      "group": "answerable",
+      "description": "Nightly batch jobs hang waiting on row locks and the database reports deadlocks between transactions.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Nightly batch jobs",
+        "observable_symptom": "hang waiting on row locks and the database reports deadlocks between transactions"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-12",
+      "group": "answerable",
+      "description": "Queries on the orders table became very slow under concurrency and now hit statement timeouts.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "orders table",
+        "observable_symptom": "hit statement timeouts"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-13",
+      "group": "answerable",
+      "description": "API requests are rejected with an expired JWT right after login; the server clock looks out of sync.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "API",
+        "observable_symptom": "requests are rejected with an expired JWT right after login"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-14",
+      "group": "answerable",
+      "description": "Signing in through the identity provider fails with a redirect URI mismatch error.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "identity provider",
+        "observable_symptom": "fails with a redirect URI mismatch error"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-15",
+      "group": "answerable",
+      "description": "A user's account was locked after several failed sign-in attempts and they cannot log in.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "A user's account",
+        "observable_symptom": "they cannot log in"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-16",
+      "group": "answerable",
+      "description": "The password reset link says it has expired even though the user just received the email.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "password reset link",
+        "observable_symptom": "says it has expired even though the user just received the email"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-17",
+      "group": "answerable",
+      "description": "After changing her password, a user keeps getting rejected because the browser autofills the old one.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "browser",
+        "observable_symptom": "keeps getting rejected"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-18",
+      "group": "answerable",
+      "description": "Users are logged out every few minutes because the access token refresh does not work.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "access token refresh",
+        "observable_symptom": "Users are logged out every few minutes"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-19",
+      "group": "answerable",
+      "description": "The session cookie is not sent on cross-site requests after a browser update; SameSite seems to block it.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "session cookie",
+        "observable_symptom": "is not sent on cross-site requests after a browser update"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-20",
+      "group": "answerable",
+      "description": "Remote users on VPN cannot reach the 10.20.0.0/16 application subnet because split-tunnel routes are missing.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "VPN",
+        "observable_symptom": "cannot reach the 10.20.0.0/16 application subnet because split-tunnel routes are missing"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-21",
+      "group": "answerable",
+      "description": "The VPN client connects, but the corporate firewall on the laptop blocks the VPN adapter.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "VPN adapter",
+        "observable_symptom": "blocks the VPN adapter"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-22",
+      "group": "answerable",
+      "description": "A desktop shows a duplicate IP address conflict warning and keeps losing connectivity.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "A desktop",
+        "observable_symptom": "shows a duplicate IP address conflict warning and keeps losing connectivity"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-23",
+      "group": "answerable",
+      "description": "New laptops do not get an address from DHCP; the scope may be exhausted.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "New laptops",
+        "observable_symptom": "do not get an address from DHCP"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-24",
+      "group": "answerable",
+      "description": "A workstation cannot ping its default gateway after being moved to a new desk and VLAN.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "default gateway",
+        "observable_symptom": "cannot ping its default gateway after being moved to a new desk and VLAN"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-25",
+      "group": "answerable",
+      "description": "Large packets are dropped over the site link while small pings work; we suspect an MTU mismatch.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "site link",
+        "observable_symptom": "Large packets are dropped over the site link while small pings work"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-26",
+      "group": "answerable",
+      "description": "Uploading a PDF fails with 415 Unsupported Media Type.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "PDF",
+        "observable_symptom": "fails with 415 Unsupported Media Type"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-27",
+      "group": "answerable",
+      "description": "Uploads fail with a generic error because the temp directory disk on the app server is full.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "temp directory disk on the app server",
+        "observable_symptom": "Uploads fail with a generic error"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-28",
+      "group": "answerable",
+      "description": "Large multipart uploads to the S3 bucket leave incomplete uploads and the object never appears.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "S3 bucket",
+        "observable_symptom": "leave incomplete uploads and the object never appears"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-ANS-29",
+      "group": "answerable",
+      "description": "Signed upload URLs expire before large video uploads finish.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Signed upload URLs",
+        "observable_symptom": "expire before large video uploads finish"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-01",
+      "group": "out_of_corpus",
+      "description": "The Jenkins pipeline fails because the Gradle build cache is corrupted on the build agent.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Jenkins pipeline",
+        "observable_symptom": "fails because the Gradle build cache is corrupted on the build agent"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-02",
+      "group": "out_of_corpus",
+      "description": "Our iOS app was rejected by App Store review for a missing privacy manifest.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "iOS app",
+        "observable_symptom": "was rejected by App Store review for a missing privacy manifest"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-03",
+      "group": "out_of_corpus",
+      "description": "An Excel macro crashes when opening the quarterly budget workbook.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Excel macro",
+        "observable_symptom": "crashes when opening the quarterly budget workbook"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-04",
+      "group": "out_of_corpus",
+      "description": "The Elasticsearch cluster status is red because primary shards are unassigned.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Elasticsearch cluster",
+        "observable_symptom": "status is red because primary shards are unassigned"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-05",
+      "group": "out_of_corpus",
+      "description": "Pushing a Docker image to the private registry fails with 'manifest invalid'.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Docker image",
+        "observable_symptom": "fails with 'manifest invalid'"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-06",
+      "group": "out_of_corpus",
+      "description": "The SAP payroll run produces wrong overtime totals for night-shift workers.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "SAP payroll run",
+        "observable_symptom": "produces wrong overtime totals for night-shift workers"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-07",
+      "group": "out_of_corpus",
+      "description": "Bluetooth headsets disconnect from Teams calls on Windows 11 laptops.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Teams calls",
+        "observable_symptom": "disconnect from Teams calls on Windows 11 laptops"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-08",
+      "group": "out_of_corpus",
+      "description": "Redis evicts keys unexpectedly after the maxmemory policy was changed to allkeys-lru.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Redis",
+        "observable_symptom": "evicts keys unexpectedly"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-09",
+      "group": "out_of_corpus",
+      "description": "The MongoDB replica set keeps electing a new primary every few minutes.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "MongoDB replica set",
+        "observable_symptom": "keeps electing a new primary every few minutes"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-10",
+      "group": "out_of_corpus",
+      "description": "Stripe webhooks fail signature verification in our billing service.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "billing service",
+        "observable_symptom": "fail signature verification"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-11",
+      "group": "out_of_corpus",
+      "description": "A GPU driver update broke CUDA on the machine-learning training servers.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "CUDA",
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "observable_symptom"
+      ],
+      "passed": false
+    },
+    {
+      "ticket_id": "C-OOC-12",
+      "group": "out_of_corpus",
+      "description": "Outlook calendar invites show the wrong time zone for attendees in India.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Outlook calendar invites",
+        "observable_symptom": "show the wrong time zone for attendees in India"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-13",
+      "group": "out_of_corpus",
+      "description": "The Jira workflow transition to Done is missing for the support project.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "Jira workflow transition to Done",
+        "observable_symptom": "is missing for the support project"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-OOC-14",
+      "group": "out_of_corpus",
+      "description": "A React Native build fails with a Metro bundler module resolution error.",
+      "expected_clarification": false,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": "React Native build",
+        "observable_symptom": "fails with a Metro bundler module resolution error"
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-01",
+      "group": "vague",
+      "description": "Everything is slow today.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-02",
+      "group": "vague",
+      "description": "The system is down, please help.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-03",
+      "group": "vague",
+      "description": "Users are complaining about errors.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-04",
+      "group": "vague",
+      "description": "Something broke after the update.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-05",
+      "group": "vague",
+      "description": "I can't do my work, nothing is working.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-06",
+      "group": "vague",
+      "description": "Weird behavior on the website since this morning.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-07",
+      "group": "vague",
+      "description": "My team has an access issue.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": false,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": false,
+      "missing": [],
+      "passed": false
+    },
+    {
+      "ticket_id": "C-VAG-08",
+      "group": "vague",
+      "description": "We have a problem with the server.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-09",
+      "group": "vague",
+      "description": "I get an error when I try to use it.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    },
+    {
+      "ticket_id": "C-VAG-10",
+      "group": "vague",
+      "description": "Could be the app, could be the connection. Please investigate urgently.",
+      "expected_clarification": true,
+      "error": null,
+      "completeness": {
+        "is_troubleshooting_request": true,
+        "affected_system": null,
+        "observable_symptom": null
+      },
+      "clarification": true,
+      "missing": [
+        "affected_system",
+        "observable_symptom"
+      ],
+      "passed": true
+    }
+  ]
+}
