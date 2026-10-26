@@ -32,12 +32,14 @@ flowchart TD
 
 1. **Ingest** Markdown docs from `data/technical_docs/` into a local persistent ChromaDB collection (Gemini embeddings).
 2. **Receive** a ticket (`ticket_id`, `description`) via `POST /tickets/analyze` or `handle_support_ticket()`.
-3. **Classify** the ticket into `network` | `database` | `authentication` | `application` | `other`.
-4. **Tool selection**: Gemini may request `search_technical_documentation`. The model does **not** execute Python — the app runs the search and returns results.
-5. **Validate evidence** deterministically (cosine distance threshold). Absence of retrieval is never treated as sufficient evidence.
-6. **Respond**:
-   - Adequate evidence → grounded recommendations with source references.
-   - Insufficient / irrelevant / missing evidence → fixed fallback (no invented procedures).
+3. **Classify** the ticket into `network` | `database` | `authentication` | `application` | `other`, and extract completeness facts (is it a troubleshooting request, which system, which observable symptom) in the same call.
+4. **Clarify if needed**: a troubleshooting ticket with no observable symptom gets clarifying questions and stops here, before any search (see [Clarification](#clarification)).
+5. **Tool selection**: Gemini may request `search_technical_documentation`. The model does **not** execute Python — the app runs the search and returns results.
+6. **Validate evidence** deterministically against the original ticket text: the best match must be close enough *and* stand out from unrelated documents (calibrated thresholds). Absence of retrieval is never treated as sufficient evidence.
+7. **Respond** with one of three `outcome` values:
+   - `grounded_answer`: adequate evidence → recommendations with source references.
+   - `clarification_needed`: the ticket is too vague → `clarifying_questions`, no recommendations.
+   - `fallback`: insufficient / irrelevant / missing evidence, or not a troubleshooting request → fixed fallback (no invented procedures).
 
 ### Stack
 
@@ -76,7 +78,10 @@ Important config knobs (`app/config.py`):
 |---|---|
 | `llm_model` | Gemini model for classification / tools / grounding |
 | `embedding_model` | `gemini-embedding-001` |
-| `relevance_max_distance` | Cosine distance threshold (lower = closer); default `0.45` |
+| `relevance_max_distance` | Max cosine distance of the best match (lower = closer); calibrated `0.3687` |
+| `relevance_min_contrast` | Min gap between the best and the `relevance_contrast_rank`-th distinct document; calibrated `0.0442` |
+| `relevance_contrast_rank` | Which background document contrast is measured against; calibrated `5` |
+| `relevance_candidate_pool` | Chunks retrieved for the ticket text when judging sufficiency; default `15` |
 | `min_relevant_chunks` | Minimum relevant chunks required; default `1` |
 
 Never commit `.env`. `.gitignore` excludes `.env`, `.venv/`, and `data/chroma/`.
@@ -120,6 +125,7 @@ Example successful shape (values vary by model/index):
 {
   "ticket_id": "T-DB-001",
   "category": "database",
+  "outcome": "grounded_answer",
   "recommendations": [
     "Verify the database connection string and credentials against current secrets.",
     "Test connectivity from the app host with a native DB client.",
@@ -135,6 +141,7 @@ Example successful shape (values vary by model/index):
       "excerpt": "..."
     }
   ],
+  "clarifying_questions": [],
   "sufficient_evidence": true,
   "fallback_triggered": false,
   "summary": "Documented diagnostics cover credentials, connectivity, and pools. Root cause is not yet confirmed."
@@ -158,13 +165,46 @@ Application response (deterministic fallback text):
 {
   "ticket_id": "T-IRR-001",
   "category": "application",
+  "outcome": "fallback",
   "recommendations": [
     "Insufficient supporting documentation was found to provide reliable troubleshooting recommendations. Please review the ticket manually."
   ],
+  "clarifying_questions": [],
   "sources": [],
   "sufficient_evidence": false,
   "fallback_triggered": true,
   "summary": "Insufficient supporting documentation was found to provide reliable troubleshooting recommendations. Please review the ticket manually."
+}
+```
+
+### Example — too vague (clarification)
+
+Request:
+
+```json
+{
+  "ticket_id": "T-VAGUE-001",
+  "description": "It stopped working after yesterday."
+}
+```
+
+Response (no search is run):
+
+```json
+{
+  "ticket_id": "T-VAGUE-001",
+  "category": "application",
+  "outcome": "clarification_needed",
+  "recommendations": [],
+  "clarifying_questions": [
+    "Which system or feature is affected (for example the website, sign-in, VPN, file uploads, or a specific database)?",
+    "What exactly happens? Please include the exact error message or code, or describe what you see instead of the expected result.",
+    "When did it start, and is it affecting one user, a team, or everyone?"
+  ],
+  "sources": [],
+  "sufficient_evidence": false,
+  "fallback_triggered": false,
+  "summary": "More detail is needed before documented troubleshooting steps can be recommended. Please answer the questions below."
 }
 ```
 
@@ -183,18 +223,66 @@ result = handle_support_ticket(
 )
 ```
 
+## Clarification
+
+Clarification and the documentation fallback are different outcomes because the gap is in a different place:
+
+| Outcome | Where the gap is | Who can close it | Search? |
+|---|---|---|---|
+| `clarification_needed` | The ticket does not say what happens | The reporter | No, ask first |
+| `fallback` | The docs do not cover a specific problem, or it is not a troubleshooting request | A human agent | Yes (or not needed) |
+
+Asking a reporter more questions cannot fill a documentation gap, and searching a ticket that says nothing specific only produces near-random matches.
+
+**Policy** (`app/clarification.py`): a troubleshooting ticket needs clarification when it does not describe an **observable symptom** (error text, a code, or a concrete behavior such as "cannot ping the gateway"). Generic wording ("broken", "not working", "an issue", "errors", "something is wrong") does not count, nor does a phrase that only repeats the system name. A missing system name alone does not trigger clarification when the symptom is specific ("returns 503"), but it is asked about alongside a missing symptom.
+
+**Who decides**: Gemini only *extracts* phrases from the ticket (`TicketCompleteness`, in the classification call). The application decides: a phrase counts only if every word appears in the ticket and at least one word is specific (not a stopword or generic). Paraphrased or invented extractions are therefore ignored.
+
+**Second check before asking**: extraction is one non-deterministic model call, and the lightweight model sometimes drops a symptom the ticket plainly states. E-REL-004 ("Employees cannot resolve internal hostnames after the DNS change…") got no symptom in 3 of 6 identical calls. So before clarifying, if the ticket contains specific words beyond the system name, the host runs one embedding lookup on the ticket text and applies the calibrated sufficiency rule. If one document clearly stands out, the ticket is specific enough and goes through the normal path (`clarification_overridden` in the trace). Vague tickets match many documents weakly and fail this rule. A ticket that only names a system ("The VPN is acting weird") is not re-checked, because the system name alone can match one document strongly.
+
+Check the decision on the labeled calibration tickets (one Gemini call per ticket, no retrieval):
+
+```bash
+python -m evals.check_clarification
+```
+
+Latest result: [`evals/results/CLARIFICATION_CHECK.md`](evals/results/CLARIFICATION_CHECK.md) — 51/53. All 29 answerable tickets proceed; 9/10 vague tickets get clarification; 13/14 out-of-corpus tickets proceed to the documentation check. The extraction prompt was revised once after a first check on this set (45/53), so the 20-ticket evaluation is the held-out measure.
+
 ## Fallback logic
 
 Fallback is owned by the **application**, not by asking Gemini whether it “feels” uncertain.
 
-After retrieval (if any):
+When Gemini requests a search, the host also retrieves with the **original ticket text** and judges sufficiency on those scores (`app/rag/guardrails.py`). Gemini's rewritten query can add domain words a vague ticket never contained.
 
 ```text
-if not results or not is_relevant(results):
-    return FALLBACK_MESSAGE
+best     = cosine distance of the closest document
+contrast = distance of the 5th closest distinct document - best
+
+sufficient = retrieval ran
+             and best <= relevance_max_distance       # close enough
+             and contrast >= relevance_min_contrast   # stands out from the background
 ```
 
-Where relevance means: at least `min_relevant_chunks` with **cosine distance ≤ `relevance_max_distance`** (lower distance = closer match).
+The two checks catch different failures:
+
+- **Out-of-corpus tickets** (Kubernetes, Terraform, Salesforce) land on unrelated pages at distance ~0.39–0.45. The distance cap rejects them.
+- **Vague tickets** ("The application is broken for some users") are *close* to many documents at once (~0.30) but no document stands out. Low contrast rejects them; a distance threshold alone cannot.
+
+### Calibration
+
+The thresholds are fitted, not chosen by hand:
+
+```bash
+python -m evals.calibrate_relevance                  # embeds labeled tickets, fits, reports
+python -m evals.calibrate_relevance --reuse-features # refit from saved scores, no API calls
+```
+
+- Labeled data: `evals/calibration_tickets.json` — 53 tickets (29 answerable, 14 out-of-corpus, 10 vague), kept **separate** from the 20-ticket evaluation so that evaluation stays held out.
+- Rule families compared: distance only, contrast only, both (contrast ranks 2–5).
+- Objective: an unsafe answer (recommendations from unrelated docs) costs 2, a missed answer (unnecessary manual review) costs 1. Within a family the widest-margin thresholds win; across families, leave-one-out cost decides.
+- Results: [`evals/results/CALIBRATION.md`](evals/results/CALIBRATION.md). The previous `distance <= 0.45` rule would have accepted 18 of the 24 calibration tickets that should fall back.
+
+Re-run calibration after changing the corpus, chunking, or embedding model.
 
 Also:
 
@@ -227,21 +315,31 @@ Offline suites cover chunking/idempotency helpers, API validation, fallback gate
 | Ambiguous / underspecified | 3 |
 | Should not require retrieval | 2 |
 
-Expectations (`expected_category`, `retrieval_appropriate`, `expected_supporting_documents`, `fallback_expected`) are **not** rewritten to match the agent.
+Expectations (`expected_category`, `retrieval_appropriate`, `expected_supporting_documents`, `expected_outcome`) are **not** rewritten to match the agent. Version 1.1 split the old boolean `fallback_expected` into three outcomes (10 `grounded_answer`, 3 `clarification_needed`, 7 `fallback`); the reasoning is in the dataset's `outcome_policy` and `changelog`.
 
 ### Behaviors scored (CV claims)
 
 | Behavior | What is checked |
 |---|---|
-| **Tool selection** | Gemini requests retrieval when appropriate, and avoids it when not |
-| **Answer grounding** | For non-fallback tickets, citations overlap expected docs and come from retrieved evidence |
-| **Fallback behavior** | Fallback when evidence is insufficient; recommendations when evidence is adequate |
+| **Tool selection** | Gemini requests retrieval when appropriate, and avoids it when not (including vague tickets, which should not be searched) |
+| **Answer grounding** | For grounded answers, citations overlap expected docs and come from retrieved evidence |
+| **Outcome** | The returned `outcome` matches `expected_outcome` and its payload is consistent: recommendations for a grounded answer, questions without recommendations for clarification, the fixed message for fallback. Clarification and fallback are **not** interchangeable. |
+
+The report includes an expected-vs-returned outcome matrix, so a clarification answered with a fallback (or the reverse) is visible at a glance.
 
 ### Reproduce
 
 ```bash
 python -m evals.run_evaluation
+python -m evals.run_evaluation --rescore   # re-score saved traces after a scoring change, no API calls
+python -m evals.run_evaluation --dataset evals/regression_tickets.json
 ```
+
+### Regression tickets
+
+`evals/regression_tickets.json` — 16 tickets added after the clarification change, kept in a separate file so the original 20 stay unchanged and before/after results stay comparable. Each ticket has a `regression_target` naming the failure it guards against (a paraphrase of E-REL-004, a generic system with a specific symptom, a system name with no symptom, undocumented tickets that share vocabulary with the docs, an announcement that mentions an outage). Results go to `evals/results/REGRESSION_TICKETS_RESULTS.md`, never to `RESULTS.md`.
+
+The full 20-ticket run needs roughly 50 Gemini requests and the regression set roughly 40. The free tier for `gemini-3.5-flash-lite` allows 500 requests per day; a run stopped by the daily quota does not overwrite the results snapshot.
 
 Writes:
 
@@ -259,8 +357,6 @@ pytest tests/test_eval_scoring.py -q
 
 See [`evals/results/RESULTS.md`](evals/results/RESULTS.md).
 
-**Live full-suite results were not recorded in the publish environment** (no API key / Chroma index available there). After you run the evaluator locally with a key, commit an updated `RESULTS.md` if you want published numbers.
-
 **Limits of this evaluation (read carefully):**
 
 - Success on these 20 tickets demonstrates behavior **on that fixed set**, under the current prompts, models, and threshold.
@@ -276,6 +372,7 @@ app/
   main.py              # FastAPI: POST /tickets/analyze
   agent.py             # classify → tools → validate → respond
   schemas.py           # request/response models
+  clarification.py     # when a vague ticket gets clarifying questions
   config.py            # settings
   tools/knowledge_base.py
   rag/
@@ -284,17 +381,25 @@ app/
     guardrails.py      # evidence validation + FALLBACK_MESSAGE
 data/technical_docs/
 evals/
-  support_tickets.json
+  support_tickets.json       # frozen 20-ticket evaluation (held out)
+  regression_tickets.json    # 16 regression tickets, scored separately
+  calibration_tickets.json   # 53 labeled tickets for threshold calibration
+  calibrate_relevance.py
+  check_clarification.py     # clarification decision on the calibration tickets
   run_evaluation.py
   scoring.py
   results/RESULTS.md
+  results/CALIBRATION.md
+  results/CLARIFICATION_CHECK.md
 tests/
 ```
 
 ## Known limitations
 
 - Knowledge base is a small curated Markdown corpus, not a full enterprise wiki.
-- Cosine distance threshold is an MVP heuristic; calibrate before trusting in new domains.
+- Sufficiency thresholds are calibrated on 53 hand-labeled tickets over a 14-document corpus; they carry real sampling error and must be re-fitted for a new corpus or embedding model.
+- Contrast assumes one document usually owns a topic. If several documents legitimately cover the same problem, contrast drops for good tickets and the rank needs re-fitting.
+- Clarification depends on Gemini extracting the symptom phrase. On the calibration set it still misses some cases: "A GPU driver update broke CUDA" is clarified (no symptom beyond "broke"), and "My team has an access issue" is read as an access request and falls back. The API returns clarifying questions but does not yet carry a conversation, so the reporter's answer must be submitted as a new ticket.
 - No authentication, multi-tenant isolation, or ticket-routing/escalation workflow.
 - FastAPI surface is demo-oriented (Swagger UI), not a hardened production API.
 - Evaluation is case-based and limited; treat results as qualitative proof of mechanism, not as an SLA.
