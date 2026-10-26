@@ -1,0 +1,81 @@
+.callout {
+  --callout-text: var(--color-neutral-text);
+  --callout-bg: var(--color-neutral-bg);
+  --callout-border: var(--color-neutral-border);
+
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--callout-bg);
+  border: var(--border-width) solid var(--callout-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.icon {
+  display: flex;
+  padding-top: 2px;
+  color: var(--callout-text);
+}
+
+.icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.content {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.title {
+  color: var(--callout-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-base);
+}
+
+.body {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.neutral {
+  --callout-text: var(--color-neutral-text);
+  --callout-bg: var(--color-neutral-bg);
+  --callout-border: var(--color-neutral-border);
+}
+
+.accent {
+  --callout-text: var(--color-accent-text);
+  --callout-bg: var(--color-accent-subtle);
+  --callout-border: var(--color-accent-subtle-border);
+}
+
+.success {
+  --callout-text: var(--color-success-text);
+  --callout-bg: var(--color-success-bg);
+  --callout-border: var(--color-success-border);
+}
+
+.warning {
+  --callout-text: var(--color-warning-text);
+  --callout-bg: var(--color-warning-bg);
+  --callout-border: var(--color-warning-border);
+}
+
+.danger {
+  --callout-text: var(--color-danger-text);
+  --callout-bg: var(--color-danger-bg);
+  --callout-border: var(--color-danger-border);
+}

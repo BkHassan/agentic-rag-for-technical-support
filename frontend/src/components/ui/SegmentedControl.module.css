@@ -1,0 +1,73 @@
+.group {
+  --segment-height: var(--control-height-md);
+
+  display: inline-flex;
+  gap: var(--space-0-5);
+  padding: var(--space-0-5);
+  min-width: 0;
+  background: var(--color-surface-sunken);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.sm {
+  --segment-height: var(--control-height-sm);
+}
+
+.option {
+  position: relative;
+  display: inline-flex;
+}
+
+.input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  min-width: calc(var(--segment-height) - 4px);
+  min-height: calc(var(--segment-height) - 4px);
+  padding: 0 var(--space-2);
+  border-radius: calc(var(--radius-md) - 2px);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  pointer-events: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.face svg {
+  width: 15px;
+  height: 15px;
+}
+
+.option:hover .face {
+  color: var(--color-text);
+}
+
+.input:checked + .face {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--color-border);
+}
+
+.input:focus-visible + .face {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+@media (forced-colors: active) {
+  .input:checked + .face {
+    outline: 1px solid CanvasText;
+  }
+}

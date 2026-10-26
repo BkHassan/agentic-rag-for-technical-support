@@ -1,0 +1,149 @@
+.button {
+  --button-height: var(--control-height-md);
+  --button-padding: var(--space-4);
+  --button-gap: var(--space-2);
+  --button-font: var(--text-sm);
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--button-gap);
+  min-height: var(--button-height);
+  padding: 0 var(--button-padding);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--button-font);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+/* Busy is not the same as unavailable: keep full contrast so the progress label stays readable. */
+.button[aria-busy='true'] {
+  cursor: progress;
+  opacity: 1;
+}
+
+.button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Sizes */
+.sm {
+  --button-height: var(--control-height-sm);
+  --button-padding: var(--space-3);
+  --button-gap: var(--space-1-5);
+  --button-font: var(--text-xs);
+}
+
+.md {
+  --button-height: var(--control-height-md);
+}
+
+.lg {
+  --button-height: var(--control-height-lg);
+  --button-padding: var(--space-5);
+  --button-font: var(--text-base);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+/* Variants */
+.primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: var(--shadow-xs);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.primary:active:not(:disabled) {
+  background: var(--color-accent-active);
+  box-shadow: none;
+}
+
+.primary[aria-busy='true'] {
+  background: var(--color-accent-active);
+}
+
+.secondary {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+  box-shadow: var(--shadow-xs);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-control);
+}
+
+.secondary:active:not(:disabled) {
+  background: var(--color-surface-active);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.ghost:active:not(:disabled) {
+  background: var(--color-surface-active);
+}
+
+.danger {
+  background: var(--color-surface-raised);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--color-danger-bg);
+}
+
+/* Icon-only: square hit area */
+.iconOnly {
+  width: var(--button-height);
+  padding: 0;
+}
+
+.iconOnly svg {
+  width: 18px;
+  height: 18px;
+}
+
+.iconOnly.sm svg {
+  width: 16px;
+  height: 16px;
+}
