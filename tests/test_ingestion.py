@@ -61,3 +61,45 @@ def test_obsolete_chunk_id_set_difference() -> None:
     }
     obsolete = sorted(previous - current)
     assert obsolete == ["demo_doc_chunk_2"]
+
+
+def test_gemini_client_is_built_once_per_key_even_under_concurrency(monkeypatch) -> None:
+    import threading
+
+    import pytest
+
+    import app.retrieval.ingestion as ingestion
+
+    built: list[str] = []
+    barrier = threading.Barrier(8, timeout=10)
+
+    class FakeClient:
+        def __init__(self, api_key: str, http_options=None) -> None:
+            built.append(api_key)
+            # Every shared client has a bounded HTTP timeout.
+            assert http_options is not None and http_options.timeout == int(
+                ingestion.settings.model_call_timeout_seconds * 1000
+            )
+
+    monkeypatch.setattr(ingestion, "_GENAI_CLIENTS", {})
+    monkeypatch.setattr(ingestion.genai, "Client", FakeClient)
+
+    results: list[object] = []
+
+    def first_call() -> None:
+        barrier.wait()
+        results.append(ingestion.get_genai_client("key-a"))
+
+    threads = [threading.Thread(target=first_call) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert built == ["key-a"]
+    assert all(client is results[0] for client in results)
+    assert ingestion.get_genai_client("key-b") is not results[0]
+    assert built == ["key-a", "key-b"]
+    monkeypatch.setattr(ingestion.settings, "google_api_key", "")
+    with pytest.raises(ValueError, match="GOOGLE_API_KEY"):
+        ingestion.get_genai_client(None)

@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -36,13 +37,28 @@ CATEGORY_RULES: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
+# One client per API key for the whole process. Building a client takes about 1.5 s and
+# each new client opens a fresh connection; the client holds no ticket or user data,
+# and its HTTP connection pool is safe to share across request threads.
+_GENAI_CLIENTS: dict[str, genai.Client] = {}
+_GENAI_CLIENTS_LOCK = threading.Lock()
+
+
 def get_genai_client(api_key: str | None = None) -> genai.Client:
     key = api_key or settings.google_api_key
     if not key:
         raise ValueError(
             "GOOGLE_API_KEY is not set. Copy .env.example to .env and add your key."
         )
-    return genai.Client(api_key=key)
+    with _GENAI_CLIENTS_LOCK:
+        client = _GENAI_CLIENTS.get(key)
+        if client is None:
+            # Without an HTTP timeout a hung request would hold its worker thread
+            # forever after the coordinator has already given up on the stage.
+            timeout_ms = int(settings.model_call_timeout_seconds * 1000)
+            client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=timeout_ms))
+            _GENAI_CLIENTS[key] = client
+        return client
 
 
 def get_chroma_client(cfg: Settings | None = None) -> chromadb.PersistentClient:

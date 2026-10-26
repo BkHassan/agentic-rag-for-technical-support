@@ -1,4 +1,4 @@
-"""Technical support agent: classify, retrieve via tools, and ground recommendations."""
+"""Orchestrate one ticket from classification through the evidence gate to a response."""
 
 from __future__ import annotations
 
@@ -13,16 +13,18 @@ from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
 
+from app import observability as obs
 from app.config import Settings, settings
 from app.policies.evidence import (
     FALLBACK_MESSAGE,
     EvidenceValidationResult,
+    accepted_passages,
     assess_evidence,
     validate_retrieval_evidence,
 )
 from app.retrieval.ingestion import get_genai_client
 from app.retrieval.retrieval import retrieve
-from app.policies.clarification import CLARIFICATION_MESSAGE, ClarificationDecision, decide_clarification
+from app.policies.clarification import CLARIFICATION_MESSAGE, ClarificationDecision
 from app.schemas import (
     AgentOutcome,
     AgentResponse,
@@ -33,7 +35,8 @@ from app.schemas import (
     TicketClassification,
     TicketTriage,
 )
-from app.usage import current_usage, note_gemini_call, reset_usage, start_usage
+from app.orchestration.model import _generate_content_with_retry
+from app.usage import current_usage, reset_usage, start_usage
 from app.tools.knowledge_base import (
     SEARCH_TECHNICAL_DOCUMENTATION_NAME,
     execute_tool_call,
@@ -112,83 +115,6 @@ def _as_ticket(ticket: SupportTicket | dict[str, Any] | str, ticket_id: str = "a
     if isinstance(ticket, str):
         return SupportTicket(ticket_id=ticket_id, description=ticket)
     return SupportTicket.model_validate(ticket)
-
-
-def _is_transient_gemini_error(exc: Exception) -> bool:
-    message = (getattr(exc, "message", None) or str(exc)).lower()
-    code = getattr(exc, "code", None)
-    try:
-        code_int = int(code) if code is not None else None
-    except (TypeError, ValueError):
-        code_int = None
-    return code_int in {429, 503, 500} or any(
-        needle in message
-        for needle in (
-            "high demand",
-            "try again later",
-            "temporarily unavailable",
-            "resource exhausted",
-            "unavailable",
-        )
-    )
-
-
-_RETRY_AFTER_RE = re.compile(r"retry in ([0-9]+(?:\.[0-9]+)?)s", re.IGNORECASE)
-
-
-def _gemini_error_message(exc: Exception) -> str:
-    return getattr(exc, "message", None) or str(exc)
-
-
-def is_daily_quota_error(message: str | None) -> bool:
-    """True when Gemini rejected the call for the daily free-tier cap."""
-    text = (message or "").lower()
-    return "per day" in text or "daily" in text
-
-
-def retry_delay_seconds(message: str, attempt: int, base_delay_sec: float) -> float:
-    """Use Gemini's retry hint for per-minute limits, capped so a daily cap does not sleep for hours."""
-    match = _RETRY_AFTER_RE.search(message or "")
-    if match and not is_daily_quota_error(message):
-        return min(float(match.group(1)) + 1.0, 90.0)
-    return base_delay_sec * attempt
-
-
-def _generate_content_with_retry(
-    client: genai.Client,
-    *,
-    model: str,
-    contents: Any,
-    config: types.GenerateContentConfig,
-    max_attempts: int = 5,
-    base_delay_sec: float = 1.5,
-) -> Any:
-    """Call Gemini with retries for transient overload and per-minute rate limits."""
-    last_exc: Exception | None = None
-    for attempt in range(1, max_attempts + 1):
-        note_gemini_call()
-        try:
-            return client.models.generate_content(
-                model=model,
-                contents=contents,
-                config=config,
-            )
-        except (genai_errors.ServerError, genai_errors.ClientError) as exc:
-            last_exc = exc
-            message = _gemini_error_message(exc)
-            if is_daily_quota_error(message) or attempt >= max_attempts or not _is_transient_gemini_error(exc):
-                raise
-            delay = retry_delay_seconds(message, attempt, base_delay_sec)
-            logger.warning(
-                "Transient Gemini error on attempt %s/%s (%s). Retrying in %.1fs",
-                attempt,
-                max_attempts,
-                message,
-                delay,
-            )
-            time.sleep(delay)
-    assert last_exc is not None
-    raise last_exc
 
 
 def classify_ticket(
@@ -552,7 +478,9 @@ def generate_grounded_recommendations(
     if not validation.sufficient_evidence:
         return build_fallback_response(ticket, category=category, validation=validation)
 
-    relevant_evidence = validation.relevant_chunks[: cfg.retrieval_top_k]
+    relevant_evidence = accepted_passages(validation)[: cfg.retrieval_top_k]
+    if not relevant_evidence:
+        return build_fallback_response(ticket, category=category, validation=validation)
 
     prompt = (
         f"{GROUNDING_INSTRUCTIONS}\n\n"
@@ -670,6 +598,90 @@ class TicketAnalysisTrace:
     embed_api_calls: int = 0
     embed_cache_hits: int = 0
     stage_ms: dict[str, float] = field(default_factory=dict)
+    # Evaluation-only detail. A retrieval error ends in a fallback response, so the
+    # evaluation needs it to tell an outage apart from a correct fallback.
+    retrieval_error: str | None = None
+    tool_executions: int = 0
+    accepted_sources: list[str] = field(default_factory=list)
+    gemini_responses: int = 0
+    gemini_responses_with_usage: int = 0
+    prompt_tokens: int = 0
+    output_tokens: int = 0
+    thinking_tokens: int = 0
+    total_tokens: int = 0
+
+
+def _stage_ms(state: Any) -> dict[str, float]:
+    return {item.stage.value: item.elapsed_ms for item in getattr(state, "timings", [])}
+
+
+def _trace_from_state(state: Any, started: float) -> TicketAnalysisTrace:
+    from app.agents.state import StageStatus, WorkflowStatus
+    from app.policies.clarification import decide_clarification
+    from app.policies.evidence import FALLBACK_MESSAGE as fallback_text
+
+    classification = state.triage.value
+    category = classification.category if classification is not None else TicketCategory.OTHER
+    response = state.final.value
+    if response is None:
+        response = AgentResponse(
+            ticket_id=state.ticket.ticket_id,
+            category=category,
+            outcome=AgentOutcome.FALLBACK,
+            recommendations=[fallback_text],
+            sources=[],
+            sufficient_evidence=False,
+            fallback_triggered=True,
+            summary=fallback_text,
+        )
+    research = state.research.value
+    requested = bool(research is not None and research.requested_search)
+    retrieval_performed = state.retrieval.status is StageStatus.PRODUCED
+    if state.clarification.status is StageStatus.PRODUCED:
+        retrieval_source = "clarification"
+    elif retrieval_performed:
+        retrieval_source = "researcher"
+    elif state.status is WorkflowStatus.FAILED:
+        retrieval_source = "error"
+    else:
+        retrieval_source = "skipped"
+    evidence = []
+    if state.retrieval.status is StageStatus.PRODUCED and state.retrieval.value is not None:
+        evidence = [item.model_dump() for item in state.retrieval.value.passages]
+    evidence_value = state.evidence.value
+    tool_calls = []
+    if requested and research is not None and research.query:
+        tool_calls = [{"name": "search_technical_documentation", "args": {"query": research.query}}]
+    completeness = classification.completeness.model_dump() if classification and classification.completeness else None
+    missing = None
+    if classification is not None:
+        decision = decide_clarification(state.ticket.description, classification.completeness)
+        if decision.needed:
+            missing = list(decision.missing)
+    return TicketAnalysisTrace(
+        response=response,
+        classification_category=category.value,
+        gemini_requested_retrieval=requested,
+        retrieval_source=retrieval_source,
+        retrieval_performed=retrieval_performed,
+        evidence=evidence,
+        validation_sufficient=bool(evidence_value.sufficient) if evidence_value is not None else False,
+        validation_reason=(
+            state.error
+            or (evidence_value.reason if evidence_value is not None else "")
+            or (state.clarification.value.reason if state.clarification.value is not None else "")
+        ),
+        tool_calls=tool_calls,
+        latency_ms=(time.perf_counter() - started) * 1000.0,
+        error=state.error,
+        clarification_missing=missing,
+        completeness=completeness,
+        clarification_overridden=False,
+        gemini_calls=state.gemini_calls,
+        retrieval_error=state.retrieval.error if state.retrieval.status is StageStatus.INVALID else None,
+        tool_executions=1 if state.retrieval.status in {StageStatus.PRODUCED, StageStatus.INVALID} else 0,
+        accepted_sources=[item.source for item in evidence_value.accepted] if evidence_value is not None else [],
+    )
 
 
 def _stamp_cost(trace: TicketAnalysisTrace, stage_ms: dict[str, float]) -> TicketAnalysisTrace:
@@ -678,17 +690,51 @@ def _stamp_cost(trace: TicketAnalysisTrace, stage_ms: dict[str, float]) -> Ticke
         trace.gemini_calls = usage.gemini_calls
         trace.embed_api_calls = usage.embed_api_calls
         trace.embed_cache_hits = usage.embed_cache_hits
+        trace.gemini_responses = usage.gemini_responses
+        trace.gemini_responses_with_usage = usage.gemini_responses_with_usage
+        trace.prompt_tokens = usage.prompt_tokens
+        trace.output_tokens = usage.output_tokens
+        trace.thinking_tokens = usage.thinking_tokens
+        trace.total_tokens = usage.total_tokens
     trace.stage_ms = stage_ms
-    logger.info(
-        "Cost ticket_id=%s outcome=%s gemini_calls=%s embed_api_calls=%s embed_cache_hits=%s stage_ms=%s",
-        trace.response.ticket_id,
-        trace.response.outcome.value,
-        trace.gemini_calls,
-        trace.embed_api_calls,
-        trace.embed_cache_hits,
-        stage_ms,
-    )
     return trace
+
+
+def _log_request(
+    trace: TicketAnalysisTrace | None,
+    *,
+    status: str,
+    error_category: str | None = None,
+    started: float | None = None,
+) -> None:
+    """One summary event per request. Counts come from the request's usage counters."""
+    usage = current_usage()
+    fields: dict[str, Any] = {"status": status, "error_category": error_category}
+    if trace is not None:
+        fields.update(
+            outcome=None if status != "completed" else trace.response.outcome.value,
+            duration_ms=trace.latency_ms,
+            tool_executions=trace.tool_executions,
+        )
+    elif started is not None:
+        fields["duration_ms"] = (time.perf_counter() - started) * 1000.0
+    if usage is not None:
+        fields.update(
+            model_calls=usage.gemini_calls,
+            retries=usage.gemini_retries,
+            embed_calls=usage.embed_api_calls,
+            embed_cache_hits=usage.embed_cache_hits,
+        )
+        if usage.gemini_responses and usage.gemini_responses_with_usage == usage.gemini_responses:
+            fields.update(
+                input_tokens=usage.prompt_tokens,
+                output_tokens=usage.output_tokens,
+                thinking_tokens=usage.thinking_tokens,
+                total_tokens=usage.total_tokens,
+            )
+        elif usage.gemini_responses:
+            fields["tokens"] = "not_reported"
+    obs.log_event("request", level=logging.INFO if status == "completed" else logging.WARNING, **fields)
 
 
 def check_ticket_specificity(
@@ -716,136 +762,67 @@ def analyze_ticket_with_trace(
     ticket_id: str = "adhoc",
     client: genai.Client | None = None,
     cfg: Settings | None = None,
+    triage_agent: Any | None = None,
+    research_agent: Any | None = None,
+    writer_agent: Any | None = None,
+    evidence_gate: Any | None = None,
+    retrieve_documents: Any | None = None,
 ) -> TicketAnalysisTrace:
-    """Run the full agent path and return response + evaluation trace."""
+    """Run the coordinator and return the public response plus evaluation trace."""
     cfg = cfg or settings
-    started = time.perf_counter()
-    ticket_model = _as_ticket(ticket, ticket_id=ticket_id)
-    stage_ms: dict[str, float] = {}
-    usage_token = start_usage()
-    try:
-        client = client or get_genai_client(cfg.google_api_key)
-        stage_started = time.perf_counter()
-        classification = classify_ticket(ticket_model, client=client, cfg=cfg)
-        stage_ms["classify"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
-        completeness = (
-            classification.completeness.model_dump() if classification.completeness else None
-        )
-        decision = decide_clarification(ticket_model.description, classification.completeness)
-        clarification_overridden = False
-        candidates: list[dict[str, Any]] = []
-        if decision.needed:
-            specificity: EvidenceValidationResult | None = None
-            if decision.unexplained_detail:
-                stage_started = time.perf_counter()
-                candidates, specificity = check_ticket_specificity(ticket_model, cfg=cfg)
-                stage_ms["specificity"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
-            if specificity is not None and specificity.sufficient_evidence:
-                clarification_overridden = True
-                logger.info(
-                    "Clarification overridden ticket_id=%s missing=%s: ticket text matches "
-                    "documentation strongly (%s)",
-                    ticket_model.ticket_id,
-                    decision.missing,
-                    specificity.reason,
-                )
-            else:
-                logger.info(
-                    "Clarification needed ticket_id=%s missing=%s",
-                    ticket_model.ticket_id,
-                    decision.missing,
-                )
-                clarified = TicketAnalysisTrace(
-                    response=build_clarification_response(
-                        ticket_model, category=classification.category, decision=decision
-                    ),
-                    classification_category=classification.category.value,
-                    gemini_requested_retrieval=False,
-                    retrieval_source="clarification",
-                    retrieval_performed=specificity is not None,
-                    evidence=candidates,
-                    validation_sufficient=False,
-                    validation_reason=(
-                        f"{decision.reason} {specificity.reason}"
-                        if specificity is not None
-                        else f"{decision.reason} The ticket has no detail beyond the system name."
-                    ),
-                    tool_calls=[],
-                    latency_ms=(time.perf_counter() - started) * 1000.0,
-                    error=None,
-                    clarification_missing=list(decision.missing),
-                    completeness=completeness,
-                )
-                return _stamp_cost(clarified, stage_ms)
-
-        stage_started = time.perf_counter()
-        if (
-            classification.completeness is not None
-            and not classification.completeness.is_troubleshooting_request
-        ):
-            tool_outcome = {
-                "used_knowledge_base": False,
-                "tool_calls": [],
-                "response_text": "",
-            }
-            logger.info(
-                "Skipped tool call for ticket_id=%s: not a troubleshooting request",
-                ticket_model.ticket_id,
-            )
-        else:
-            tool_outcome = run_tool_calling_turn(
-                ticket_model,
-                client=client,
-                cfg=cfg,
-                max_tool_rounds=1,
-                finish_after_tool=True,
-            )
-        stage_ms["tool"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
-        stage_started = time.perf_counter()
-        evidence, retrieval_performed, retrieval_source = collect_evidence_for_ticket(
-            ticket_model,
-            tool_outcome,
-            cfg=cfg,
-            prior_ticket_hits=candidates if candidates else None,
-        )
-        stage_ms["evidence"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
-        validation = validate_retrieval_evidence(
-            evidence,
-            retrieval_performed=retrieval_performed,
-            cfg=cfg,
-        )
-        stage_started = time.perf_counter()
-        response = generate_grounded_recommendations(
-            ticket_model,
-            category=classification.category,
-            evidence=evidence,
-            retrieval_performed=retrieval_performed,
+    # Joins the HTTP request's ID when one is bound; otherwise (evaluation, CLI) starts one.
+    with obs.request_context():
+        return _analyze_in_context(
+            ticket,
+            ticket_id=ticket_id,
             client=client,
             cfg=cfg,
-            validation=validation,
+            triage_agent=triage_agent,
+            research_agent=research_agent,
+            writer_agent=writer_agent,
+            evidence_gate=evidence_gate,
+            retrieve_documents=retrieve_documents,
         )
-        stage_ms["answer"] = round((time.perf_counter() - stage_started) * 1000.0, 1)
-        answered = TicketAnalysisTrace(
-            response=response,
-            classification_category=classification.category.value,
-            gemini_requested_retrieval=bool(tool_outcome.get("used_knowledge_base")),
-            retrieval_source=retrieval_source,
-            retrieval_performed=retrieval_performed,
-            evidence=evidence,
-            validation_sufficient=validation.sufficient_evidence,
-            validation_reason=validation.reason,
-            tool_calls=list(tool_outcome.get("tool_calls") or []),
-            latency_ms=(time.perf_counter() - started) * 1000.0,
-            error=None,
-            completeness=completeness,
-            clarification_overridden=clarification_overridden,
+
+
+def _analyze_in_context(
+    ticket: SupportTicket | dict[str, Any] | str,
+    *,
+    ticket_id: str,
+    client: genai.Client | None,
+    cfg: Settings,
+    triage_agent: Any | None,
+    research_agent: Any | None,
+    writer_agent: Any | None,
+    evidence_gate: Any | None,
+    retrieve_documents: Any | None,
+) -> TicketAnalysisTrace:
+    from app.orchestration.workflow import coordinate_ticket
+
+    started = time.perf_counter()
+    ticket_model = _as_ticket(ticket, ticket_id=ticket_id)
+    usage_token = start_usage()
+    try:
+        state = coordinate_ticket(
+            ticket_model,
+            ticket_id=ticket_id,
+            client=client,
+            cfg=cfg,
+            triage_agent=triage_agent,
+            research_agent=research_agent,
+            writer_agent=writer_agent,
+            evidence_gate=evidence_gate,
+            retrieve_documents=retrieve_documents,
         )
-        return _stamp_cost(answered, stage_ms)
-    except ValueError:
-        # Config / input problems (e.g. missing GOOGLE_API_KEY) should surface to the API.
-        raise
-    except (genai_errors.ClientError, genai_errors.ServerError):
-        # Let FastAPI map Gemini client/server failures to the correct HTTP status.
+        trace = _stamp_cost(_trace_from_state(state, started), _stage_ms(state))
+        _log_request(
+            trace,
+            status="failed" if state.error else "completed",
+            error_category=getattr(state, "error_category", None),
+        )
+        return trace
+    except (ValueError, genai_errors.ClientError, genai_errors.ServerError) as exc:
+        _log_request(None, status="error", error_category=obs.error_category(exc), started=started)
         raise
     except Exception as exc:  # noqa: BLE001 - capture for eval reporting
         logger.exception("analyze_ticket_with_trace failed for %s", ticket_model.ticket_id)
@@ -867,14 +844,20 @@ def analyze_ticket_with_trace(
             retrieval_performed=False,
             evidence=[],
             validation_sufficient=False,
-            validation_reason=str(exc),
+            validation_reason="The analysis could not be completed.",
             tool_calls=[],
             latency_ms=(time.perf_counter() - started) * 1000.0,
-            error=str(exc),
+            error="The analysis could not be completed.",
         )
-        return _stamp_cost(failed_trace, stage_ms)
+        failed_trace = _stamp_cost(failed_trace, {})
+        _log_request(failed_trace, status="failed", error_category=obs.INTERNAL_ERROR)
+        return failed_trace
     finally:
         reset_usage(usage_token)
+
+
+class CoordinatorFailure(RuntimeError):
+    """The coordinator could not finish. The message is a fixed, client-safe sentence."""
 
 
 def handle_support_ticket(
@@ -883,27 +866,35 @@ def handle_support_ticket(
     ticket_id: str = "adhoc",
     client: genai.Client | None = None,
     cfg: Settings | None = None,
+    triage_agent: Any | None = None,
+    research_agent: Any | None = None,
+    writer_agent: Any | None = None,
+    evidence_gate: Any | None = None,
+    retrieve_documents: Any | None = None,
 ) -> AgentResponse:
     """
-    Full agent path:
-    1) classify and extract completeness facts
-    2) if no observable symptom was extracted and the ticket text does not match one
-       document strongly, ask for clarification (Gemini is not offered search)
-    3) let Gemini request documentation search once (app executes the tool).
-       Thanks, staffing, and announcements skip this call. No follow-up model
-       call is made from the tool result; the host writes the answer.
-    4) validate evidence deterministically (before final LLM recommendations),
-       reusing a ticket-text search already done for the clarification check
-    5) generate grounded recommendations or return the documentation fallback
+    Coordinator path:
+    1) validate the ticket
+    2) run Triage once
+    3) clarification_needed when essential details are missing (no retrieval)
+    4) fallback when the request is not troubleshooting
+    5) run Researcher and the evidence gate
+    6) fallback without Writer when evidence is insufficient
+    7) run Writer on accepted passages only, then assemble AgentResponse
     """
     trace = analyze_ticket_with_trace(
         ticket,
         ticket_id=ticket_id,
         client=client,
         cfg=cfg,
+        triage_agent=triage_agent,
+        research_agent=research_agent,
+        writer_agent=writer_agent,
+        evidence_gate=evidence_gate,
+        retrieve_documents=retrieve_documents,
     )
     if trace.error:
-        raise RuntimeError(trace.error)
+        raise CoordinatorFailure(trace.error)
     return trace.response
 
 

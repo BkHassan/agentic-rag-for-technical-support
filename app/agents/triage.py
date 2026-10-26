@@ -1,7 +1,7 @@
 """Triage agent: classify one ticket and report whether clarification may be needed.
 
 This module does not retrieve documents, write troubleshooting steps, or judge
-evidence. The API and coordinator still call ``app.agent.classify_ticket``.
+evidence. The API and coordinator still call ``app.orchestration.coordinator.classify_ticket``.
 """
 
 from __future__ import annotations
@@ -142,7 +142,7 @@ def _complete_with_gemini(
     client: Any | None,
     cfg: Settings,
 ) -> Any:
-    from app.agent import _generate_content_with_retry
+    from app.orchestration.model import _generate_content_with_retry
 
     gemini = client or get_genai_client(cfg.google_api_key)
     return _generate_content_with_retry(

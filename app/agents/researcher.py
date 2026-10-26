@@ -114,7 +114,9 @@ def research_ticket(
         model_calls += 1
     except Exception as exc:  # noqa: BLE001 - the model failure must not look like retrieved evidence
         model_calls += 1
-        message = "model rate limit" if _is_rate_limit(exc) else f"model call failed: {type(exc).__name__}"
+        from app.orchestration.model import describe_model_failure
+
+        message = "model rate limit" if _is_rate_limit(exc) else describe_model_failure(exc)
         return ResearchRun(
             research=Stage(status=StageStatus.INVALID, error=_public_error(message)),
             model_calls=model_calls,
@@ -291,7 +293,7 @@ def _complete_with_gemini(
     client: Any | None,
     cfg: Settings,
 ) -> Any:
-    from app.agent import _generate_content_with_retry
+    from app.orchestration.model import _generate_content_with_retry
 
     gemini = client or get_genai_client(cfg.google_api_key)
     return _generate_content_with_retry(

@@ -50,7 +50,8 @@ _GENERIC = {
     "access", "acting", "app", "application", "apps", "behavior", "behaviour", "broke",
     "broken", "bug", "complain", "complaining", "complaints", "error", "errors",
     "everything", "fail", "failed", "failing", "fails", "failure", "help", "issue",
-    "issues", "it", "nothing", "odd", "problem", "problems", "seeing", "server", "servers",
+    "issues", "it", "load", "loaded", "loading", "loads", "nothing", "odd", "problem",
+    "problems", "seeing", "server", "servers",
     "service", "slow", "something", "stopped", "strange", "stuff", "system", "systems",
     "team", "thing", "things", "user", "users", "weird", "work", "working", "works", "wrong",
 }

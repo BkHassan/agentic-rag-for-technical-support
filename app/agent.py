@@ -2,18 +2,21 @@
 
 from app.orchestration.coordinator import (
     _extract_function_calls,
-    _generate_content_with_retry,
     _parse_classification,
     analyze_ticket_with_trace,
-    assess_evidence,
+    build_clarification_response,
+    build_fallback_response,
     classify_ticket,
     collect_evidence_for_ticket,
     generate_grounded_recommendations,
     handle_support_ticket,
-    is_daily_quota_error,
     main,
-    retry_delay_seconds,
     run_tool_calling_turn,
+)
+from app.orchestration.model import (
+    _generate_content_with_retry,
+    is_daily_quota_error,
+    retry_delay_seconds,
 )
 
 __all__ = [

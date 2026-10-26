@@ -1,25 +1,34 @@
 """Deterministic evidence validation and safety checks.
 
-Chroma collections in this project use cosine distance:
-- lower distance => closer / more relevant match
-- distance is NOT a similarity score where larger is better
-
-The host application must validate retrieval results before asking Gemini
-to produce final troubleshooting recommendations.
+Chroma collections in this project are created with `hnsw:space` cosine.
+In that space a smaller distance is a closer match. The separate `score`
+field (`1 - distance`) is not read by this gate.
 
 Sufficiency rule (both checks must pass, no LLM involved):
-1. Closeness: the best chunk has cosine distance <= `relevance_max_distance`.
-2. Contrast: the best document stands out from the background. The distance of
-   the `relevance_contrast_rank`-th closest distinct document minus the best
-   distance must be >= `relevance_min_contrast`. Vague or out-of-corpus tickets
-   sit at a similar distance from many documents, so they have low contrast.
+1. Closeness: the best usable chunk has cosine distance <= `relevance_max_distance`
+   (calibrated 0.3687).
+2. Contrast: among distinct documents, sort each document's best distance
+   ascending and subtract the closest from the `relevance_contrast_rank`-th
+   (calibrated rank 5). That gap must be >= `relevance_min_contrast`
+   (calibrated 0.0442). List position is not used.
 
-The thresholds are calibrated on labeled examples by `python -m evaluation.calibrate_relevance`.
+Fewer than five distinct usable documents leaves contrast unknown, and the
+gate rejects the set when a positive contrast threshold is configured.
+Chunks with a missing, boolean, non-numeric, or non-finite distance, and
+chunks with no passage text, are ignored. They cannot open the gate and are
+not accepted passages.
+
+Passing this gate means only that the retrieved distances met the rule.
+It does not judge whether a later generated answer is faithful.
+
+Thresholds come from the 53-ticket calibration (`python -m evaluation.calibrate_relevance`).
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
+from numbers import Real
 from typing import Any
 
 from app.config import Settings, settings
@@ -80,9 +89,33 @@ class EvidenceValidationResult:
         }
 
 
-def _has_finite_distance(item: dict[str, Any]) -> bool:
+def _passage_text(item: dict[str, Any]) -> str:
+    for key in ("text", "document"):
+        value = item.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _finite_distance(item: Any) -> float | None:
+    """Cosine distance, or None when the score cannot be used.
+
+    Booleans are rejected because `bool` is a subclass of `int` (`False` would
+    otherwise become distance 0). Strings are not coerced. NaN and infinities
+    are rejected because comparisons with them do not implement an ordering.
+    """
+    if not isinstance(item, dict):
+        return None
     value = item.get("distance")
-    return isinstance(value, (int, float))
+    if isinstance(value, bool) or not isinstance(value, Real):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
 
 
 def _document_key(item: dict[str, Any]) -> str:
@@ -94,15 +127,16 @@ def select_relevant_chunks(
     *,
     max_distance: float,
 ) -> list[dict[str, Any]]:
-    """Return chunks whose cosine distance is at or below the threshold."""
+    """Return usable chunks whose cosine distance is at or below the threshold."""
     relevant: list[dict[str, Any]] = []
     for item in results:
-        if not _has_finite_distance(item):
+        distance = _finite_distance(item)
+        if distance is None or not _passage_text(item):
             continue
-        if float(item["distance"]) <= max_distance:
+        if distance <= max_distance:
             relevant.append(item)
     # Prefer stronger matches first (lower cosine distance).
-    return sorted(relevant, key=lambda item: float(item["distance"]))
+    return sorted(relevant, key=lambda item: _finite_distance(item) or 0.0)
 
 
 def relevance_features(
@@ -113,15 +147,18 @@ def relevance_features(
     """
     Compute closeness and contrast over distinct documents.
 
-    Contrast is None when fewer than `contrast_rank` distinct documents were
-    retrieved, because the background cannot be measured.
+    Each document contributes its closest usable chunk. Distances are sorted
+    ascending, so the order Chroma returned does not matter. Contrast is the
+    rank-th distance minus the closest. It is None when fewer than
+    `contrast_rank` distinct documents were usable, because the background
+    cannot be measured.
     """
     best_per_document: dict[str, float] = {}
     for item in results or []:
-        if not _has_finite_distance(item):
+        distance = _finite_distance(item)
+        if distance is None or not isinstance(item, dict) or not _passage_text(item):
             continue
         key = _document_key(item)
-        distance = float(item["distance"])
         if key not in best_per_document or distance < best_per_document[key]:
             best_per_document[key] = distance
 
@@ -145,11 +182,31 @@ def passes_relevance_rule(
     min_contrast: float,
 ) -> bool:
     """Apply the calibrated closeness + contrast rule to precomputed features."""
-    if features.best_distance is None or features.best_distance > max_distance:
+    best = features.best_distance
+    if best is None or not math.isfinite(best) or best > max_distance:
         return False
     if min_contrast <= 0:
         return True
-    return features.contrast is not None and features.contrast >= min_contrast
+    contrast = features.contrast
+    return contrast is not None and math.isfinite(contrast) and contrast >= min_contrast
+
+
+def evidence_reason_code(validation: EvidenceValidationResult) -> str:
+    """
+    Stable code for a gate decision, read from the result's structured fields in the
+    same order validate_retrieval_evidence applies its checks. For logs and metrics.
+    """
+    if validation.sufficient_evidence:
+        return "accepted"
+    if not validation.retrieval_performed:
+        return "no_retrieval"
+    if validation.retrieved_count == 0:
+        return "empty_retrieval"
+    if validation.relevant_count < validation.min_relevant_chunks:
+        return "distance_above_threshold"
+    if validation.contrast is None:
+        return "too_few_documents_for_contrast"
+    return "low_contrast"
 
 
 def validate_retrieval_evidence(
@@ -179,7 +236,10 @@ def validate_retrieval_evidence(
     min_needed = (
         cfg.min_relevant_chunks if min_relevant_chunks is None else min_relevant_chunks
     )
-    chunks = list(results or [])
+    try:
+        chunks = list(results or [])
+    except TypeError:
+        chunks = []
     relevant = select_relevant_chunks(chunks, max_distance=threshold) if retrieval_performed else []
     features = relevance_features(chunks, contrast_rank=rank)
 
@@ -248,6 +308,23 @@ def validate_retrieval_evidence(
         f"Accepted {len(relevant)} relevant chunk(s) with cosine distance "
         f"<= {threshold}{contrast_note}.",
     )
+
+
+def accepted_passages(validation: EvidenceValidationResult) -> list[dict[str, Any]]:
+    """Passages the gate accepted. Empty when the set fails or none remain eligible.
+
+    Callers that generate an answer must use this list. A true sufficiency flag
+    is not permission to forward the raw retrieval payload.
+    """
+    if not validation.sufficient_evidence:
+        return []
+    accepted = select_relevant_chunks(
+        validation.relevant_chunks,
+        max_distance=validation.max_distance_threshold,
+    )
+    if len(accepted) < validation.min_relevant_chunks:
+        return []
+    return accepted
 
 
 def is_relevant(
