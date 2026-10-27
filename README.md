@@ -6,9 +6,9 @@ A multi-agent support assistant for IT tickets. It classifies a ticket, searches
 
 **Highlights**
 
-- Three Gemini agents (Triage, Researcher, Writer) under a **Python Coordinator** that owns all control flow. Agents never call each other.
-- A deterministic, calibrated **evidence gate** decides whether the Writer runs at all.
-- Every step the Writer returns must be copied verbatim from a supplied passage and cite it. The host checks this in Python.
+- Three Gemini agents (Triage, Researcher, Writer), orchestrated by a **Python Coordinator** that owns all control flow. The agents never call each other or act on their own.
+- A deterministic **evidence gate** decides whether the Writer runs at all. It is a heuristic retrieval filter: its thresholds were calibrated on ticket text, not on the queries it now scores (see [Limitations](#limitations-quota-and-security)).
+- Each step the Writer returns must appear word for word (ignoring whitespace) in the passage it cites, and so must its supporting quote. The host checks this in Python and drops any step that fails. The short summary is checked more loosely: it may not introduce filenames, numbers, commands, or destructive actions absent from the passages.
 - An evaluation harness that separates passes, failures, infrastructure errors, and unexecuted tickets, and records provider-reported token usage.
 - Request IDs, structured stage logs, and secret redaction, with no external monitoring service.
 
@@ -75,7 +75,7 @@ Content-Type: application/json
 
 ## Results
 
-A live run on the 20-ticket held-out set, from 2026-10-26, using `gemini-3.5-flash-lite` with `gemini-embedding-001`. Full report: [evaluation/results/RESULTS.md](evaluation/results/RESULTS.md).
+A single live run on the 20-ticket held-out set, from 2026-10-26, using `gemini-3.5-flash-lite` with `gemini-embedding-001`. Full report: [evaluation/results/RESULTS.md](evaluation/results/RESULTS.md).
 
 | Measure | Result |
 |---|---|
@@ -88,7 +88,7 @@ A live run on the 20-ticket held-out set, from 2026-10-26, using `gemini-3.5-fla
 | Latency p50 | 3.2 s |
 | Estimated cost | not estimated (no prices supplied) |
 
-The failed ticket (E-REL-005) fell back although relevant documents were found. The infrastructure error (E-REL-006) was a per-minute rate limit that outlasted the stage timeout. Citation correctness checks *which* documents are cited, not whether each sentence is faithful. Earlier runs and their caveats are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#measured-results).
+The failed ticket (E-REL-005) fell back although relevant documents were found. The infrastructure error (E-REL-006) was a per-minute rate limit that outlasted the stage timeout. Citation correctness checks *which* documents are cited, not whether each sentence is faithful; sentence-level support is enforced at runtime by the Writer check above and is not scored separately. A single run of 20 tickets cannot show run-to-run variance. Earlier runs and their caveats are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#measured-results).
 
 ## Quick start
 
@@ -146,6 +146,8 @@ Settings live in `app/config.py` and can be overridden by environment variables 
 | `RELEVANCE_MAX_DISTANCE` / `RELEVANCE_MIN_CONTRAST` / `RELEVANCE_CONTRAST_RANK` | `0.3687` / `0.0442` / `5` | Calibrated evidence-gate thresholds |
 | `MODEL_CALL_TIMEOUT_SECONDS` / `TOOL_EXECUTION_TIMEOUT_SECONDS` | `45` / `20` | Per-call bounds |
 
+The two model values differ on purpose. Without `LLM_MODEL`, the code uses `gemini-3.8-flash`. `.env.example` overrides it with `gemini-3.5-flash-lite` because, as its comment notes, `gemini-3.8-flash` is limited to about 20 free requests per day. All results above were measured with `gemini-3.5-flash-lite`.
+
 ## Tests and evaluation
 
 **Offline tests** (deterministic; models and retrieval are faked, no API calls):
@@ -187,7 +189,8 @@ python -m evaluation.calibrate_relevance --reuse-features   # offline: refit fro
 - **Small corpus.** 14 Markdown documents, and a 20-ticket evaluation from single runs. Treat the results as evidence the mechanism works, not as a reliability figure.
 - **Clarification hinges on one Triage call.** The known regression E-REL-004 ("cannot resolve internal hostnames…") has been wrongly sent to clarification in some runs.
 - **Gate calibration mismatch.** The gate's thresholds were calibrated on ticket-text scores but now score the Researcher's query. Passing the gate means the passages are close to the query, not that the answer is correct.
-- **No API hardening.** The API has no authentication or rate limiting, and clarification is single-turn.
+- **Local, trusted use only.** The API has no authentication, rate limiting, or request-size limit on ticket fields, and clarification is single-turn. Add these before handling real tickets.
+- **Prompt injection.** A few unit tests check that injected instructions in tickets and passages cannot change an agent's role, tool call, or citations. There is no adversarial evaluation, so this is not a robustness claim.
 - **Quota.** Free-tier Gemini quotas are small. Evaluation runs have hit per-minute 429s and the daily cap, and `.env.example` warns that the code-default model allows very few free requests per day.
 - **Security.**
   - Keys are never logged; log records are redacted.
